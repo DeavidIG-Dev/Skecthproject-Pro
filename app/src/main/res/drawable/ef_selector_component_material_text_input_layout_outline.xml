@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+	<item
+		android:drawable="@drawable/ef_component_material_text_input_layout_outline_error"
+		android:state_activated="true" />
+	<item
+		android:drawable="@drawable/ef_component_material_text_input_layout_outline_disabled"
+		android:state_enabled="false" />
+	<item
+		android:drawable="@drawable/ef_component_material_text_input_layout_outline_focused"
+		android:state_selected="true" />
+	<item android:drawable="@drawable/ef_component_material_text_input_layout_outline" />
+</selector>

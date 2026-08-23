@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<style name="Widget.ComponentMaterial3.ShapeableImageView.Rounded" parent="" >
+		<item name="cornerSize">20dp</item>
+		<item name="cornerFamily">rounded</item>
+	</style>
+
+	<style name="Widget.ComponentMaterial.ComponentMaterialTextInputLayout.Outline" parent="" />
+	<style name="Widget.ComponentMaterial.ComponentMaterialTextInputLayout.Outline.Joined" parent="" />
+	<style name="Widget.ComponentMaterial.ComponentMaterialTextInputLayout.Filled" parent="" />
+
+	<style name="IndicadorMasPequeno">
+		<item name="android:width">10dp</item>
+		<item name="android:height">28dp</item>
+		<item name="marginHorizontal">2dp</item>
+		<item name="color">?attr/colorPrimaryContainer</item>
+	</style>
+</resources>

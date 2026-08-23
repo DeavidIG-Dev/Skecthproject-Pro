@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:id="@+id/constraintLayout"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">
+
+	<com.google.android.material.imageview.ShapeableImageView
+		android:id="@+id/shapeableImageView"
+		android:layout_width="85dp"
+		android:layout_height="85dp"
+		android:layout_marginTop="10dp"
+		android:src="@mipmap/ic_launcher"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		app:shapeAppearanceOverlay="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded" />
+
+	<com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout
+		android:id="@+id/application_name"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="5dp"
+		android:layout_marginTop="30dp"
+		app:headerEnable="true"
+		app:headerText="Project"
+		app:hintEnable="true"
+		app:hintText="Enter application name"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/shapeableImageView"
+		app:startIconDrawable="@drawable/ic_android_24"
+		app:startIconEnable="true">
+
+		<EditText
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:singleLine="true"
+			android:text="Project App" />
+
+	</com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout>
+
+	<com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout
+		android:id="@+id/package_name"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="5dp"
+		android:layout_marginTop="10dp"
+		app:endLayoutEnable="true"
+		app:prefixEnable="true"
+		app:hintEnable="true"
+		app:hintText="Package Name"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/application_name"
+		app:startIconDrawable="@drawable/ic_deployed_code_24"
+		app:startIconEnable="true">
+
+		<EditText
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:singleLine="true"
+			android:text="project.app" />
+
+	</com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout>
+
+	<com.google.android.material.textview.MaterialTextView
+		android:id="@+id/materialTextView"
+		style="@style/TextAppearance.Material3.TitleLarge"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="5dp"
+		android:layout_marginTop="16dp"
+		android:text="Select Language"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/package_name" />
+
+	<com.google.android.material.tabs.TabLayout
+		android:id="@+id/language_option"
+		android:layout_width="350dp"
+		android:layout_height="wrap_content"
+		android:background="@drawable/tab_background"
+		android:layout_marginTop="10dp"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/materialTextView"
+		app:tabIconTint="@color/tab_icon_m3_selector"
+		app:tabIndicator="@drawable/tab_indicator_background"
+		app:tabIndicatorAnimationMode="fade"
+		app:tabIndicatorFullWidth="false"
+		app:tabIndicatorGravity="stretch"
+		app:tabInlineLabel="true"
+		app:tabMinWidth="56dp"
+		app:tabRippleColor="@null"
+		app:tabTextColor="@color/tab_icon_m3_selector">
+
+		<com.google.android.material.tabs.TabItem
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:icon="@drawable/ic_java_32"
+			android:text="Java" />
+
+		<com.google.android.material.tabs.TabItem
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:icon="@drawable/ic_kotlin_32"
+			android:text="Kotlin" />
+
+		<com.google.android.material.tabs.TabItem
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:icon="@drawable/ic_scala_32"
+			android:text="Scala" />
+
+	</com.google.android.material.tabs.TabLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

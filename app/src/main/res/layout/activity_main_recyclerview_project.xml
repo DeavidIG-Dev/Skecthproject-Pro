@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:background="@drawable/bg_project_single"
+	android:layout_width="match_parent"
+	android:layout_height="75dp">
+
+	<com.deavidig.mod.deaniel.divider.widget.AppCompatComponentMaterialDivider
+		android:id="@+id/top_project"
+		android:layout_width="0dp"
+		android:layout_height="2dp"
+		android:background="?attr/colorSurfaceContainerHigh"
+		android:visibility="invisible"
+		app:dividerInsetEnd="20dp"
+		app:dividerInsetStart="20dp"
+		app:dividerRadiusTopLeftSize="8dp"
+		app:dividerRadiusTopRightSize="8dp"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent" />
+
+	<com.google.android.material.imageview.ShapeableImageView
+		android:id="@+id/project_icon"
+		android:layout_width="50dp"
+		android:layout_height="50dp"
+		android:layout_marginStart="8dp"
+		android:foreground="@drawable/ef_gradient_bottomtop_dark"
+		app:shapeAppearance="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintVertical_bias="0.48" />
+
+	<TextView
+		android:id="@+id/description_project"
+		style="@style/TextAppearance.Material3.BodyMedium"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="8dp"
+		android:layout_marginBottom="16dp"
+		android:text="This is a description of the project"
+		android:textColor="#808080"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintStart_toEndOf="@+id/project_icon" />
+
+	<TextView
+		style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+		android:id="@+id/title_project"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="8dp"
+		android:text="Title of the Project"
+		android:textColor="#202020"
+		app:layout_constraintBottom_toTopOf="@+id/description_project"
+		app:layout_constraintStart_toEndOf="@+id/project_icon"
+		app:layout_constraintTop_toTopOf="parent"
+		app:layout_constraintVertical_bias="0.923" />
+
+	<TextView
+		android:id="@+id/id_project"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginBottom="2dp"
+		android:text="600"
+		android:textColor="#FAFAFA"
+		app:layout_constraintBottom_toBottomOf="@+id/project_icon"
+		app:layout_constraintEnd_toEndOf="@+id/project_icon"
+		app:layout_constraintStart_toStartOf="@+id/project_icon" />
+
+	<com.deavidig.mod.deaniel.divider.widget.ComponentMaterialDivider
+		android:layout_width="1.5dp"
+		android:layout_height="35dp"
+		android:layout_marginEnd="7.5dp"
+		android:background="?attr/colorSurfaceContainerHigh"
+		app:dividerRadiusSize="8dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toStartOf="@+id/options_project"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.constraintlayout.utils.widget.ImageFilterButton
+		android:id="@+id/options_project"
+		android:layout_width="25dp"
+		android:layout_height="25dp"
+		android:layout_marginEnd="8dp"
+		android:background="@android:color/transparent"
+		android:src="@drawable/ic_arrow_forward_ios_24"
+		android:tint="?attr/colorSurfaceContainerHighest"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<com.deavidig.mod.deaniel.divider.widget.ComponentMaterialDivider
+		android:id="@+id/bottom_project"
+		android:layout_width="0dp"
+		android:layout_height="2dp"
+		android:background="?attr/colorSurfaceContainerHigh"
+		android:visibility="invisible"
+		app:dividerInsetEnd="20dp"
+		app:dividerInsetStart="20dp"
+		app:dividerRadiusBottomLeftSize="8dp"
+		app:dividerRadiusBottomRightSize="8dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
