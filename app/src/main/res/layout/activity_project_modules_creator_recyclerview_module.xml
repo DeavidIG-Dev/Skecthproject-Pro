@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:background="@drawable/bg_project_single"
+	android:layout_width="match_parent"
+	android:layout_height="50dp">
+
+	<TextView
+		android:id="@+id/title_project"
+		style="@style/TextAppearance.Material3.TitleMedium.Emphasized"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="10dp"
+		android:text="Title of the Project"
+		android:textColor="?android:attr/textColorPrimary"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toStartOf="@+id/divider"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<com.deavidig.mod.deaniel.divider.widget.ComponentMaterialDivider
+		android:id="@+id/divider"
+		android:layout_width="1.5dp"
+		android:layout_height="35dp"
+		android:layout_marginEnd="7.5dp"
+		app:dividerColor="?attr/colorSurfaceContainerHigh"
+		app:dividerRadiusSize="16dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toStartOf="@+id/options_project"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.constraintlayout.utils.widget.ImageFilterButton
+		android:id="@+id/options_project"
+		android:layout_width="wrap_content"
+		android:layout_height="0dp"
+		android:layout_marginEnd="10dp"
+		android:background="@android:color/transparent"
+		android:src="@drawable/ic_more_vert_24"
+		android:tint="?attr/colorSurfaceContainerHighest"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

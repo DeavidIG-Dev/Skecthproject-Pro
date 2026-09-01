@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:id="@+id/name_module_container"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:layout_marginHorizontal="5dp"
+	android:layout_marginTop="5dp"
+	app:hintEnable="true"
+	app:hintText="Name of New Module">
+
+	<com.google.android.material.textfield.TextInputEditText
+		android:id="@+id/name_module"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content" />
+
+</com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout>

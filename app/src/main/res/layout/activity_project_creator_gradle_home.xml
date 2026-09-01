@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:id="@+id/constraintLayout"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">
+
+	<com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout
+		android:id="@+id/application_prefix_name"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="5dp"
+		app:hintEnable="true"
+		app:hintText="Enter prefix application name"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent">
+
+		<EditText
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:singleLine="true"
+			tools:layout_editor_absoluteX="54dp" />
+
+	</com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout>
+
+	<com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout
+		android:id="@+id/version_code"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="5dp"
+		android:layout_marginTop="10dp"
+		app:hintEnable="true"
+		app:hintText="Version code"
+		app:placeholderEnable="true"
+		app:placeholderText="1.0"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/application_prefix_name">
+
+		<EditText
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:singleLine="true"
+			android:text="1.0" />
+
+	</com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout>
+
+	<com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout
+		android:id="@+id/version_name"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="5dp"
+		android:layout_marginTop="10dp"
+		app:hintEnable="true"
+		app:hintText="Version Name"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/version_code">
+
+		<EditText
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:singleLine="true" />
+
+	</com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout>
+
+	<NumberPicker
+		android:id="@+id/numberPicker"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:value="50"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/version_name"
+		tools:layout_editor_absoluteY="307dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+<!--
+
+
+	<com.google.android.material.textview.MaterialTextView
+		android:id="@+id/java_versions"
+		style="@style/TextAppearance.Material3.TitleLarge"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="16dp"
+		android:text="Java Version"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/version_code" />
+
+	<com.google.android.material.tabs.TabLayout
+		android:id="@+id/language_version_option"
+		android:layout_width="350dp"
+		android:layout_height="wrap_content"
+		android:background="@drawable/tab_background"
+		android:padding="0dp"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/java_versions"
+		app:tabIconTint="@color/tab_icon_m3_selector"
+		app:tabIndicator="@drawable/tab_indicator_background"
+		app:tabIndicatorAnimationDuration="750"
+		app:tabIndicatorAnimationMode="elastic"
+		app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
+		app:tabIndicatorFullWidth="false"
+		app:tabIndicatorGravity="stretch"
+		app:tabInlineLabel="true"
+		app:tabRippleColor="@null"
+		app:tabTextColor="@color/tab_icon_m3_selector">
+
+		<com.google.android.material.tabs.TabItem
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:icon="@drawable/ic_java_32"
+			android:text="8" />
+
+		<com.google.android.material.tabs.TabItem
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:icon="@drawable/ic_java_32"
+			android:text="11" />
+
+		<com.google.android.material.tabs.TabItem
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:icon="@drawable/ic_java_32"
+			android:text="17" />
+
+		<com.google.android.material.tabs.TabItem
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:icon="@drawable/ic_java_32"
+			android:text="21" />
+
+	</com.google.android.material.tabs.TabLayout>
+
+	<com.google.android.material.textview.MaterialTextView
+		style="@style/TextAppearance.Material3.TitleLarge"
+		android:id="@+id/android_version"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="15dp"
+		android:text="Android Versions"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/language_version_option" />
+
+	<com.google.android.material.slider.RangeSlider
+		android:id="@+id/android_option_version"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:valueTo="35"
+		android:stepSize="1"
+		app:values="@array/android_version_selected"
+		app:thumbHeight="16dp"
+		app:thumbWidth="16dp"
+		app:thumbTrackGapSize="0dp"
+		app:tickColorActive="@android:color/transparent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/android_version" />
+
+	<com.google.android.material.textview.MaterialTextView
+		style="@style/TextAppearance.Material3.TitleSmall"
+		android:id="@+id/android_version_options"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="Min SDK: API 21 - Target SDK: API 33"
+		android:textColor="@android:color/darker_gray"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/android_option_version" />
+-->
