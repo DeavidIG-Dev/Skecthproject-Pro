@@ -24,15 +24,15 @@
 		android:layout_height="wrap_content"
 		android:layout_marginHorizontal="5dp"
 		android:layout_marginTop="30dp"
-		app:headerEnable="true"
-		app:headerText="Project"
 		app:hintEnable="true"
 		app:hintText="Enter application name"
+		app:placeholderEnable="true"
+		app:placeholderText="Project App"
+		app:startIconDrawable="@drawable/ic_android_24"
+		app:startIconEnable="true"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toBottomOf="@+id/shapeableImageView"
-		app:startIconDrawable="@drawable/ic_android_24"
-		app:startIconEnable="true">
+		app:layout_constraintTop_toBottomOf="@+id/shapeableImageView">
 
 		<EditText
 			android:layout_width="match_parent"
@@ -52,6 +52,9 @@
 		app:prefixEnable="true"
 		app:hintEnable="true"
 		app:hintText="Package Name"
+		app:hintGravity="center"
+		app:placeholderEnable="true"
+		app:placeholderText="project.app"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
 		app:layout_constraintTop_toBottomOf="@+id/application_name"
@@ -67,7 +70,7 @@
 	</com.deavidig.mod.deaniel.textinput.widget.ComponentMaterialTextInputLayout>
 
 	<com.google.android.material.textview.MaterialTextView
-		android:id="@+id/materialTextView"
+		android:id="@+id/java_versions"
 		style="@style/TextAppearance.Material3.TitleLarge"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
@@ -86,9 +89,11 @@
 		android:layout_marginTop="10dp"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toBottomOf="@+id/materialTextView"
+		app:layout_constraintTop_toBottomOf="@+id/java_versions"
 		app:tabIconTint="@color/tab_icon_m3_selector"
 		app:tabIndicator="@drawable/tab_indicator_background"
+		app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
+		app:tabIndicatorAnimationDuration="1500"
 		app:tabIndicatorAnimationMode="fade"
 		app:tabIndicatorFullWidth="false"
 		app:tabIndicatorGravity="stretch"

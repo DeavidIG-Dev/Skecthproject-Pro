@@ -16,11 +16,12 @@ class AppCompatComponentMaterialDivider(context: Context, attrs: AttributeSet? =
 
 	init {
 		context.withStyledAttributes(attrs, R.styleable.AppCompatComponentMaterialDivider) {
-			this@AppCompatComponentMaterialDivider.mRadiusCornerSizeLeftTop = getDimension(R.styleable.ComponentMaterialDivider_dividerRadiusSize, 0f)
-			this@AppCompatComponentMaterialDivider.mRadiusCornerSizeRightTop = getDimension(R.styleable.ComponentMaterialDivider_dividerRadiusSize, 0f)
-			this@AppCompatComponentMaterialDivider.mRadiusCornerSizeLeftBottom = getDimension(R.styleable.ComponentMaterialDivider_dividerRadiusSize, 0f)
-			this@AppCompatComponentMaterialDivider.mRadiusCornerSizeRightBottom = getDimension(R.styleable.ComponentMaterialDivider_dividerRadiusSize, 0f)
+			this@AppCompatComponentMaterialDivider.mRadiusCornerSizeLeftTop = getDimension(R.styleable.AppCompatComponentMaterialDivider_dividerRadiusTopLeftSize, 16f)
+			this@AppCompatComponentMaterialDivider.mRadiusCornerSizeRightTop = getDimension(R.styleable.AppCompatComponentMaterialDivider_dividerRadiusTopRightSize, 16f)
+			this@AppCompatComponentMaterialDivider.mRadiusCornerSizeLeftBottom = getDimension(R.styleable.AppCompatComponentMaterialDivider_dividerRadiusBottomLeftSize, 16f)
+			this@AppCompatComponentMaterialDivider.mRadiusCornerSizeRightBottom = getDimension(R.styleable.AppCompatComponentMaterialDivider_dividerRadiusBottomRightSize, 16f)
 		}
+		invalidateRadius()
 	}
 
 	fun setRadiusCornerSizeLeftTop(cornerSize: Float) {

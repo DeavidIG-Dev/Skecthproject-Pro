@@ -14,7 +14,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.EditText
@@ -22,16 +21,17 @@ import android.widget.ImageView
 import android.widget.ListView
 import android.widget.PopupWindow
 import androidx.annotation.AttrRes
-import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.withStyledAttributes
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
+import androidx.core.view.marginEnd
 import androidx.core.widget.doOnTextChanged
-import com.deavidig.mod.deaniel.appcompat.app.getAttributeToColor
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import com.deavidig.sketchprojectpro.R
 import com.deavidig.sketchprojectpro.databinding.ComponentMaterialTextInputLayoutBinding
 import com.google.android.material.textview.MaterialTextView
@@ -53,7 +53,10 @@ import com.google.android.material.textview.MaterialTextView
  * - **Character counter**, with an optional maximum length.
  * - A **hint / floating label**, animated M3-style: it rests over the
  *   [EditText] when empty and unfocused, and floats above it (smaller,
- *   translated up) once focused or filled.
+ *   translated up) once focused or filled. Its horizontal alignment
+ *   ([HintGravity]) and how far it may visually stretch over the prefix/
+ *   suffix/icons ([HintStartAnchor], [HintEndAnchor]) are both configurable,
+ *   independently per side.
  * - A **header**, a title-like label rendered above the whole field —
  *   useful to group several fields under one heading.
  * - Selection lifecycle listeners ([OnItemActionListener],
@@ -112,10 +115,75 @@ class ComponentMaterialTextInputLayout(
 
 	private companion object {
 		/** Duration of the floating-label float-up/float-down transition. */
-		const val HINT_ANIMATION_DURATION_MS = 150L
+		const val HINT_ANIMATION_DURATION_MS = 200L
 
 		/** Scale applied to the floating label once it's "floated" (focused or filled). */
 		const val HINT_FLOATING_SCALE = 0.75f
+
+		/**
+		 * Extra gap, in dp, kept between the floated label's own top edge and
+		 * the outlined border above it — on top of the label's own height —
+		 * so the border never crosses through the text. Also drives how much
+		 * extra top margin [reserveSpaceForFloatingHint] adds.
+		 */
+		const val HINT_TOP_CLEARANCE_DP = 6
+
+		/**
+		 * How long the ghost placeholder takes to fade out while what's typed
+		 * still matches it — a deliberate, "melting away" pace.
+		 */
+		const val PLACEHOLDER_MATCH_FADE_DURATION_MS = 400L
+
+		/**
+		 * How long the ghost placeholder takes to fade out once what's typed
+		 * no longer matches it — near-instant, so a stale suggestion never
+		 * lingers over unrelated text.
+		 */
+		const val PLACEHOLDER_MISMATCH_FADE_DURATION_MS = 80L
+
+		/** Alpha (0-255) applied to [mHintTextColor] as the placeholder's default color when none is set explicitly. */
+		const val PLACEHOLDER_FALLBACK_ALPHA = 140
+	}
+
+	/**
+	 * Horizontal alignment of the floating hint label relative to the
+	 * [EditText]'s own bounds. Set via [setHintGravity] / the `hintGravity`
+	 * XML attribute; `START` is the default.
+	 */
+	enum class HintGravity { START, CENTER, END }
+
+	/**
+	 * What the floating hint label's **start** (left, in LTR) edge aligns
+	 * with, when it's told to extend past the [EditText]'s own bounds. Set
+	 * via [setHintStartAnchor] / the `hintStartAnchor` XML attribute;
+	 * unset (`auto`, matching the [EditText]'s own start) is the default.
+	 */
+	enum class HintStartAnchor {
+		/** Aligns with the start of the leading icon ([viewBinding.imageStart]), covering it and the prefix. */
+		START_ICON,
+
+		/** Aligns with the start of the whole leading container ([viewBinding.start]), covering icon and prefix alike. */
+		START_LAYOUT,
+
+		/** Aligns with the start of the prefix text ([viewBinding.prefix]), covering just the prefix. */
+		PREFIX
+	}
+
+	/**
+	 * What the floating hint label's **end** (right, in LTR) edge aligns
+	 * with, when it's told to extend past the [EditText]'s own bounds. Set
+	 * via [setHintEndAnchor] / the `hintEndAnchor` XML attribute; unset
+	 * (`auto`, matching the [EditText]'s own end) is the default.
+	 */
+	enum class HintEndAnchor {
+		/** Aligns with the end of the trailing icon ([viewBinding.imageEnd]), covering it and the suffix. */
+		END_ICON,
+
+		/** Aligns with the end of the whole trailing container ([viewBinding.end]), covering icon and suffix alike. */
+		END_LAYOUT,
+
+		/** Aligns with the end of the suffix text ([viewBinding.suffix]), covering just the suffix. */
+		SUFFIX
 	}
 
 	/** Binding for the private layout (container, prefix/suffix, icons, counter, etc.). */
@@ -146,6 +214,29 @@ class ComponentMaterialTextInputLayout(
 	private var mHintEnable: Boolean = false
 	private var mHintTextColor: ColorStateList? = null
 
+	/** Backing field for [setHintGravity]. Defaults to [HintGravity.START]. */
+	private var mHintGravity: HintGravity = HintGravity.START
+
+	/**
+	 * Backing field for [setHintStartAnchor]. `null` (the default) means
+	 * "match the [EditText]'s own start edge" — the typed text always
+	 * begins right after the prefix, that isn't configurable. A non-null
+	 * value lets the floating label's start edge extend further left,
+	 * independently of where typing actually starts, so the hint can
+	 * visually stretch over the prefix and/or the leading icon.
+	 */
+	private var mHintStartAnchor: HintStartAnchor? = null
+
+	/**
+	 * Backing field for [setHintEndAnchor]. `null` (the default) means
+	 * "match the [EditText]'s own end edge" — the typed text always ends
+	 * right before the suffix, that isn't configurable. A non-null value
+	 * lets the floating label's end edge extend further right,
+	 * independently of where typing actually ends, so the hint can
+	 * visually stretch over the suffix and/or the trailing icon.
+	 */
+	private var mHintEndAnchor: HintEndAnchor? = null
+
 	/**
 	 * Backing field for the floating label rendered above the [EditText]
 	 * when [mHintEnable] is `true`. Created lazily the first time an
@@ -171,6 +262,35 @@ class ComponentMaterialTextInputLayout(
 	 * Stored so it can be detached in [onDetachedFromWindow].
 	 */
 	private var mHintLayoutListener: View.OnLayoutChangeListener? = null
+
+	/**
+	 * Ghost example text (e.g. "juan@correo.com") shown inline over the
+	 * [EditText] once the hint has floated out of the way and there's
+	 * nothing typed yet — separate from [mHintText], which is the *label*,
+	 * not an example value. See [setPlaceholderText].
+	 */
+	private var mPlaceholderText: String? = null
+
+	/** Whether the placeholder is shown at all. See [setPlaceholderEnabled]. */
+	private var mPlaceholderEnable: Boolean = false
+
+	/** Text color for the placeholder. Defaults to a dimmed [mHintTextColor] if left unset. */
+	private var mPlaceholderTextColor: ColorStateList? = null
+
+	/**
+	 * Backing field for the ghost placeholder label. Created lazily the
+	 * first time an [EditText] child is added, mirroring
+	 * [mFloatingHintLabel]. See [setupPlaceholderLabel].
+	 */
+	private var mPlaceholderLabel: MaterialTextView? = null
+
+	/**
+	 * Drives the placeholder's fade-out, at one of two very different
+	 * speeds depending on whether what's typed still matches it — see
+	 * [updatePlaceholderVisibility]. Cancelled in [onDetachedFromWindow]
+	 * like [mHintAnimator].
+	 */
+	private var mPlaceholderAnimator: ValueAnimator? = null
 
 	/**
 	 * Border/divider colors resolved **once** from the current theme instead
@@ -285,23 +405,9 @@ class ComponentMaterialTextInputLayout(
 					?: ColorStateList.valueOf(context.getColor(typedValue.data))
 			}
 
-			mSuffixText = getString(R.styleable.ComponentMaterialTextInputLayout_suffixText)
-			mSuffixEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_suffixEnable, false)
-			mSuffixTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_suffixTextColor) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
-
-			mHintText = getString(R.styleable.ComponentMaterialTextInputLayout_hintText)
-			mHintEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_hintEnable, false)
-			mHintTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_hintTextColor) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(com.google.android.material.R.attr.colorOutline, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
+			mPlaceholderText = getString(R.styleable.ComponentMaterialTextInputLayout_placeholderText)
+			mPlaceholderEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_placeholderEnable, false)
+			mPlaceholderTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_placeholderTextColor)
 
 			mHeaderText = getString(R.styleable.ComponentMaterialTextInputLayout_headerText)
 			mHeaderEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_headerEnable, false)
@@ -311,7 +417,7 @@ class ComponentMaterialTextInputLayout(
 				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
 					?: ColorStateList.valueOf(context.getColor(typedValue.data))
 			}
-			mHeaderTextSize = getDimension(R.styleable.ComponentMaterialTextInputLayout_headerTextSize, 14.dp.toFloat())
+			mHeaderTextSize = getDimension(R.styleable.ComponentMaterialTextInputLayout_headerTextSize, 24.dp.toFloat())
 
 			mCounterEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_counterEnable, false)
 			mOutLimitTextLimit = getBoolean(R.styleable.ComponentMaterialTextInputLayout_counterLimit, false)
@@ -352,6 +458,42 @@ class ComponentMaterialTextInputLayout(
 			}
 			mEndLayoutEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_endLayoutEnable, false)
 
+			mSuffixText = getString(R.styleable.ComponentMaterialTextInputLayout_suffixText)
+			mSuffixEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_suffixEnable, false)
+			mSuffixTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_suffixTextColor) ?: run {
+				val typedValue = TypedValue()
+				context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
+				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
+					?: ColorStateList.valueOf(context.getColor(typedValue.data))
+			}
+
+			mHintText = getString(R.styleable.ComponentMaterialTextInputLayout_hintText)
+			mHintEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_hintEnable, false)
+			mHintTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_hintTextColor) ?: run {
+				val typedValue = TypedValue()
+				context.theme.resolveAttribute(com.google.android.material.R.attr.colorOutline, typedValue, true)
+				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
+					?: ColorStateList.valueOf(context.getColor(typedValue.data))
+			}
+			mHintGravity = when (getInt(R.styleable.ComponentMaterialTextInputLayout_hintGravity, 0)) {
+				1 -> HintGravity.CENTER
+				2 -> HintGravity.END
+				else -> HintGravity.START
+			}
+
+			mHintStartAnchor = when (getInt(R.styleable.ComponentMaterialTextInputLayout_hintStartAnchor, 0)) {
+				1 -> HintStartAnchor.START_ICON
+				2 -> HintStartAnchor.START_LAYOUT
+				3 -> HintStartAnchor.PREFIX
+				else -> if (mPrefixEnable) HintStartAnchor.PREFIX else if (mStartIconEnable) HintStartAnchor.START_ICON else HintStartAnchor.START_LAYOUT
+			}
+			mHintEndAnchor = when (getInt(R.styleable.ComponentMaterialTextInputLayout_hintEndAnchor, 0)) {
+				1 -> HintEndAnchor.END_ICON
+				2 -> HintEndAnchor.END_LAYOUT
+				3 -> HintEndAnchor.SUFFIX
+				else -> if (mSuffixEnable) HintEndAnchor.SUFFIX else if (mEndIconEnable) HintEndAnchor.END_ICON else HintEndAnchor.END_LAYOUT
+			}
+
 			mErrorText = getString(R.styleable.ComponentMaterialTextInputLayout_errorText) ?: ""
 			mErrorTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_errorTextColor) ?: ColorStateList.valueOf(Color.RED)
 		}
@@ -377,6 +519,44 @@ class ComponentMaterialTextInputLayout(
 		// TalkBack announces the helper/error text automatically whenever it
 		// changes, without needing an explicit accessibility event per toggle.
 		viewBinding.message.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+
+		// Fixes the header/message row getting an unwanted symmetric gap
+		// (see normalizeVerticalTextLayout's KDoc for why).
+		normalizeVerticalTextLayout(viewBinding.header)
+		normalizeVerticalTextLayout(viewBinding.message)
+	}
+
+	/**
+	 * Forces a text row to hug its **top**, instead of being vertically
+	 * centered inside whatever height its `ConstraintLayout.LayoutParams`
+	 * ended up with.
+	 *
+	 * The symptom this fixes: if `header` or `message` sits in a row taller
+	 * than its own text (its `layout_height` is `0dp`/`match_constraint`
+	 * spanning between two fixed anchors, or a chain gives it more room than
+	 * it needs), ConstraintLayout's *default* vertical bias (`0.5`, i.e.
+	 * centered) splits that extra height evenly — half above the text, half
+	 * below. So a row with `24dp` of slack above a `24dp`-tall text ends up
+	 * with `24dp` of empty space *above* the text too, on top of its normal
+	 * height, exactly as described: `24dp + 24dp + normal_height`.
+	 *
+	 * Setting the height to `WRAP_CONTENT` and the vertical bias to `0`
+	 * (top-aligned) removes that slack outright — the row is exactly as
+	 * tall as its own text, with nothing above it.
+	 *
+	 * This is a defensive, code-only fix since the exact row/constraint
+	 * setup lives in the XML layout, which isn't available here; if the
+	 * gap persists after this, the row's *own* margin (not its height/bias)
+	 * is the more likely culprit and would need the layout file itself.
+	 */
+	@Deprecated("The error is fixed in the XML-Binding.")
+	private fun normalizeVerticalTextLayout(view: View) {
+		val params = view.layoutParams as? LayoutParams ?: return
+		if (params.height != LayoutParams.WRAP_CONTENT || params.verticalBias != 0f) {
+			params.height = LayoutParams.WRAP_CONTENT
+			params.verticalBias = 0f
+			view.layoutParams = params
+		}
 	}
 
 	/** Converts `dp` to pixels using the current device density. */
@@ -584,7 +764,7 @@ class ComponentMaterialTextInputLayout(
 		val options = mPrefixTextList
 		val current = if (options.isNotEmpty()) options[0] else mPrefixText
 
-		textView.text = current
+		textView.text = current?.truncate(11)
 		mPrefixTextColor?.let { textView.setTextColor(it) }
 		textView.visibility = if (mPrefixEnable) VISIBLE else GONE
 
@@ -596,7 +776,7 @@ class ComponentMaterialTextInputLayout(
 			textView.setOnClickListener {
 				showOptionsPopup(textView, options) { selected ->
 					val previous = mPrefixText
-					textView.text = selected
+					textView.text = selected.truncate(11)
 					mPrefixText = selected
 					ViewCompat.setStateDescription(textView, selected)
 
@@ -669,6 +849,18 @@ class ComponentMaterialTextInputLayout(
 		applySuffix()
 	}
 
+	/**
+	 * Sets a list of selectable **suffix** options shown as a popup menu
+	 * (e.g. units of measurement). The first entry is displayed by default;
+	 * tapping the suffix opens the popup when there's more than one option.
+	 *
+	 * @param texts options to show, in order.
+	 */
+	fun setSuffixTextList(texts: List<String>) {
+		mSuffixTextList = texts
+		applySuffix()
+	}
+
 	/** Returns the current list of selectable suffix options. */
 	fun getSuffixTextList(): List<String> = mSuffixTextList
 
@@ -717,7 +909,7 @@ class ComponentMaterialTextInputLayout(
 		val options = mSuffixTextList
 		val current = if (options.isNotEmpty()) options[0] else mSuffixText
 
-		textView.text = current
+		textView.text = current?.truncate(11)
 		mSuffixTextColor?.let { textView.setTextColor(it) }
 		textView.visibility = if (mSuffixEnable) VISIBLE else GONE
 
@@ -729,7 +921,7 @@ class ComponentMaterialTextInputLayout(
 			textView.setOnClickListener {
 				showOptionsPopup(textView, options) { selected ->
 					val previous = mSuffixText
-					textView.text = selected
+					textView.text = selected.truncate(11)
 					mSuffixText = selected
 					ViewCompat.setStateDescription(textView, selected)
 
@@ -758,62 +950,26 @@ class ComponentMaterialTextInputLayout(
 	 * @param options entries shown in the popup.
 	 * @param onSelected called with the chosen entry once the user taps it.
 	 */
-	private fun showOptionsPopup(
-		anchor: View,
-		options: List<String>,
-		onSelected: (String) -> Unit
-	) {
-		val context = this.context
-		val popup = PopupWindow(context)
+	private fun showOptionsPopup(anchor: View, options: List<String>, onSelected: (String) -> Unit) {
+		val popup = PopupWindow(this.context)
 
-		val listView = ListView(context).apply {
-			adapter = ArrayAdapter(
-				context,
-				android.R.layout.simple_list_item_1,
-				options
-			)
+		val listView = ListView(this.context).apply {
+			adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, options)
 			dividerHeight = 0
-		}
-
-		val maxItems = 5
-
-		val adapter = listView.adapter
-		var height = 0
-
-		for (i in 0 until minOf(adapter.count, maxItems)) {
-			val item = adapter.getView(i, null, listView)
-
-			item.measure(
-				MeasureSpec.makeMeasureSpec(
-					150.dp,
-					MeasureSpec.EXACTLY
-				),
-				MeasureSpec.makeMeasureSpec(
-					0,
-					MeasureSpec.UNSPECIFIED
-				)
-			)
-
-			height += item.measuredHeight
 		}
 
 		popup.contentView = listView
 		popup.width = 150.dp
-		popup.height = height
+		popup.height = WindowManager.LayoutParams.WRAP_CONTENT
 		popup.isFocusable = true
-
 		popup.setBackgroundDrawable(
-			ContextCompat.getDrawable(
-				context,
-				R.drawable.bg_popup_background
-			)
+			ContextCompat.getDrawable(this.context, R.drawable.bg_popup_background)
 		)
 
 		listView.setOnItemClickListener { _, _, position, _ ->
 			onSelected(options[position])
 			popup.dismiss()
 		}
-
 		popup.showAsDropDown(anchor)
 	}
 
@@ -862,6 +1018,305 @@ class ComponentMaterialTextInputLayout(
 	}
 
 	/**
+	 * Sets the horizontal alignment of the floating hint label ([HintGravity]).
+	 * Takes effect immediately if an [EditText] child has already been added.
+	 */
+	fun setHintGravity(gravity: HintGravity) {
+		mHintGravity = gravity
+		mEditText?.let { applyHintGravity(it) }
+	}
+
+	/** Returns the current hint gravity. */
+	fun getHintGravity(): HintGravity = mHintGravity
+
+	/**
+	 * Refreshes only the floating label's horizontal constraints to match
+	 * [mHintGravity] plus [mHintStartAnchor] / [mHintEndAnchor], re-centering
+	 * its scale pivot to match (so it shrinks toward the edge it's anchored
+	 * to, instead of always around its own center regardless of alignment).
+	 *
+	 * The label's start/end edges align to [mHintStartAnchor] /
+	 * [mHintEndAnchor] when set, or fall back to the [EditText]'s own start/
+	 * end (`target.id`) when `null` — see [setHintStartAnchor] /
+	 * [setHintEndAnchor] for what each option visually does.
+	 */
+	private fun applyHintGravity(target: EditText) {
+		val label = mFloatingHintLabel ?: return
+		val params = label.layoutParams as? ConstraintLayout.LayoutParams ?: return
+
+		val startId = mHintStartAnchor?.alignedStartViewId() ?: target.id
+		val endId = mHintEndAnchor?.alignedEndViewId() ?: target.id
+
+		params.startToStart = ConstraintLayout.LayoutParams.UNSET
+		params.endToEnd = ConstraintLayout.LayoutParams.UNSET
+		params.horizontalBias = 0f
+
+		when (mHintGravity) {
+			HintGravity.START -> params.startToEnd = startId
+			HintGravity.CENTER -> {
+				params.startToEnd = startId
+				params.endToStart = endId
+				params.horizontalBias = 0.5f
+			}
+			HintGravity.END -> params.endToStart = endId
+		}
+
+		label.layoutParams = params
+		updateFloatingHintLabel(target, animate = false)
+	}
+
+	/**
+	 * Controls how far left the **floating hint label** — not the typed
+	 * text itself, which always begins right after the prefix — is allowed
+	 * to extend on its start side, independently of where typed text
+	 * actually begins:
+	 *
+	 * - `null` (default): the hint's start edge matches the [EditText]'s
+	 *   own start edge exactly — the original, unchanged behavior.
+	 * - [HintStartAnchor.PREFIX]: the hint's start edge aligns with the
+	 *   **start** of the prefix (not after it, like typed text does), so
+	 *   the resting hint visually stretches leftward over the prefix.
+	 * - [HintStartAnchor.START_LAYOUT] / [HintStartAnchor.START_ICON]:
+	 *   stretches further still, over the leading-icon container too — the
+	 *   most "complete" coverage on this side.
+	 *
+	 * This is independent from [setHintEndAnchor], so one side can be left
+	 * at its minimal default while the other is set to fully cover its
+	 * icon/prefix or suffix/icon, and vice versa.
+	 */
+	fun setHintStartAnchor(anchor: HintStartAnchor?) {
+		mHintStartAnchor = anchor
+		mEditText?.let { applyHintGravity(it) }
+	}
+
+	/** Returns the current hint start anchor (`null` = matches the [EditText]'s own start). */
+	fun getHintStartAnchor(): HintStartAnchor? = mHintStartAnchor
+
+	/**
+	 * Controls how far right the **floating hint label** — not the typed
+	 * text itself, which always ends right before the suffix — is allowed
+	 * to extend on its end side, independently of where typed text actually
+	 * ends:
+	 *
+	 * - `null` (default): the hint's end edge matches the [EditText]'s own
+	 *   end edge exactly — the original, unchanged behavior.
+	 * - [HintEndAnchor.SUFFIX]: the hint's end edge aligns with the
+	 *   **end** of the suffix (not before it, like typed text does), so the
+	 *   resting hint visually stretches rightward over the suffix.
+	 * - [HintEndAnchor.END_LAYOUT] / [HintEndAnchor.END_ICON]:
+	 *   stretches further still, over the trailing-icon container too — the
+	 *   most "complete" coverage on this side.
+	 *
+	 * This is independent from [setHintStartAnchor], so one side can be
+	 * left at its minimal default while the other is set to fully cover its
+	 * prefix/icon or icon/suffix, and vice versa.
+	 */
+	fun setHintEndAnchor(anchor: HintEndAnchor?) {
+		mHintEndAnchor = anchor
+		mEditText?.let { applyHintGravity(it) }
+	}
+
+	/** Returns the current hint end anchor (`null` = matches the [EditText]'s own end). */
+	fun getHintEndAnchor(): HintEndAnchor? = mHintEndAnchor
+
+	// =======================================================================
+	// Placeholder — ghost example text with a two-speed fade
+	// =======================================================================
+
+	/**
+	 * Sets the ghost example text (e.g. `"juan@correo.com"`) shown inline
+	 * over the [EditText] once the hint has floated out of the way. This is
+	 * a *placeholder*, distinct from [setHintText] (the label): the hint
+	 * describes the field, the placeholder shows what a valid value looks
+	 * like.
+	 */
+	fun setPlaceholderText(text: String?) {
+		mPlaceholderText = text
+		mEditText?.let { updatePlaceholderText(it) }
+	}
+
+	/** Returns the current placeholder text. */
+	fun getPlaceholderText(): String? = mPlaceholderText
+
+	/** Shows or hides the placeholder entirely. */
+	fun setPlaceholderEnabled(enabled: Boolean) {
+		mPlaceholderEnable = enabled
+		mEditText?.let { updatePlaceholderVisibility(it, animate = false) }
+	}
+
+	/** Returns whether the placeholder is enabled. */
+	fun isPlaceholderEnabled(): Boolean = mPlaceholderEnable
+
+	/** Sets the placeholder's text color. Falls back to a dimmed hint color when unset. */
+	fun setPlaceholderTextColor(color: ColorStateList?) {
+		mPlaceholderTextColor = color
+		mPlaceholderLabel?.let { label -> resolvePlaceholderTextColor()?.let { label.setTextColor(it) } }
+	}
+
+	/** Returns the placeholder's text color, if explicitly set. */
+	fun getPlaceholderTextColor(): ColorStateList? = mPlaceholderTextColor
+
+	/** Resolves the color the placeholder should render in: its own color, or a dimmed hint color as a fallback. */
+	private fun resolvePlaceholderTextColor(): ColorStateList? {
+		mPlaceholderTextColor?.let { return it }
+		val baseColor = mHintTextColor?.defaultColor ?: return null
+		return ColorStateList.valueOf(ColorUtils.setAlphaComponent(baseColor, PLACEHOLDER_FALLBACK_ALPHA))
+	}
+
+	/**
+	 * Creates the ghost placeholder label, mirroring [setupFloatingHintLabel]:
+	 * a plain [MaterialTextView] positioned exactly over `target`'s own
+	 * bounds, purely decorative (not read by TalkBack — the real
+	 * accessibility hint is already carried by the floating label via
+	 * `labelFor`, and a ghost example value would just be noise there).
+	 */
+	private fun setupPlaceholderLabel(target: EditText) {
+		val label = MaterialTextView(context).apply {
+			id = View.generateViewId()
+			setTextSize(TypedValue.COMPLEX_UNIT_PX, target.textSize)
+			resolvePlaceholderTextColor()?.let { setTextColor(it) }
+			isClickable = false
+			isFocusable = false
+			importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+			alpha = 0f
+		}
+
+		viewBinding.container.addView(label)
+		label.layoutParams = ConstraintLayout.LayoutParams(
+			ConstraintLayout.LayoutParams.WRAP_CONTENT,
+			ConstraintLayout.LayoutParams.WRAP_CONTENT
+		).apply {
+			startToStart = target.id
+			topToTop = target.id
+			bottomToBottom = target.id
+		}
+
+		mPlaceholderLabel = label
+		updatePlaceholderText(target)
+	}
+
+	/** Refreshes only the placeholder's text content, then re-syncs its visibility. */
+	private fun updatePlaceholderText(target: EditText) {
+		mPlaceholderLabel?.text = mPlaceholderText
+		updatePlaceholderVisibility(target, animate = false)
+	}
+
+	/**
+	 * Shows, hides or fades the ghost placeholder based on what's actually
+	 * typed in [target], at one of two very different speeds:
+	 *
+	 * - Field empty → placeholder fully visible, no animation needed.
+	 * - What's typed so far is a **prefix of the placeholder** (the user is
+	 *   typing the example value itself) → fades out over
+	 *   [PLACEHOLDER_MATCH_FADE_DURATION_MS], a deliberate, "melting away" pace.
+	 * - What's typed **doesn't match** → fades out over
+	 *   [PLACEHOLDER_MISMATCH_FADE_DURATION_MS] instead — near-instant, so a
+	 *   stale ghost example never lingers over unrelated text.
+	 *
+	 * @param animate `false` for the initial sync (no previous state to
+	 *   animate from); `true` for real text changes.
+	 */
+	private fun updatePlaceholderVisibility(target: EditText, animate: Boolean) {
+		val label = mPlaceholderLabel ?: return
+		val placeholder = mPlaceholderText
+
+		val typed = target.text?.toString().orEmpty()
+
+		mPlaceholderAnimator?.cancel()
+
+		if (!mPlaceholderEnable || placeholder.isNullOrEmpty()) {
+			label.visibility = GONE
+			return
+		}
+		label.visibility = VISIBLE
+
+		val targetAlpha: Float
+		val duration: Long
+		when {
+			typed.isEmpty() -> {
+				targetAlpha = 1f
+				duration = HINT_ANIMATION_DURATION_MS
+			}
+			placeholder.startsWith(typed) -> {
+				targetAlpha = 0f
+				duration = PLACEHOLDER_MATCH_FADE_DURATION_MS
+			}
+			else -> {
+				targetAlpha = 0f
+				duration = PLACEHOLDER_MISMATCH_FADE_DURATION_MS
+			}
+		}
+
+		if (!animate) {
+			label.alpha = targetAlpha
+			return
+		}
+
+		val startAlpha = label.alpha
+		mPlaceholderAnimator = ValueAnimator.ofFloat(startAlpha, targetAlpha).apply {
+			this.duration = duration
+			interpolator = if (targetAlpha < startAlpha) FastOutSlowInInterpolator() else android.view.animation.LinearInterpolator()
+			addUpdateListener { label.alpha = it.animatedValue as Float }
+			start()
+		}
+	}
+
+	/**
+	 * Resolves a [HintStartAnchor] to the view the hint label should align
+	 * its start edge *with* (`startToStart`), letting it reach further left
+	 * than where typing actually starts.
+	 */
+	private fun HintStartAnchor.alignedStartViewId(): Int = when (this) {
+		HintStartAnchor.START_ICON -> viewBinding.imageStart.id
+		HintStartAnchor.START_LAYOUT -> viewBinding.start.id
+		HintStartAnchor.PREFIX -> viewBinding.prefix.id
+	}
+
+	/**
+	 * Resolves a [HintEndAnchor] to the view the hint label should align
+	 * its end edge *with* (`endToEnd`), letting it reach further right than
+	 * where typing actually ends.
+	 */
+	private fun HintEndAnchor.alignedEndViewId(): Int = when (this) {
+		HintEndAnchor.END_ICON -> viewBinding.imageEnd.id
+		HintEndAnchor.END_LAYOUT -> viewBinding.end.id
+		HintEndAnchor.SUFFIX -> viewBinding.suffix.id
+	}
+
+	/**
+	 * Reserves enough space above [viewBinding.container] for the floated
+	 * hint label to sit fully above the outlined border, instead of
+	 * overlapping it — which is what used to make the border visually cut
+	 * through the label's text once it floated up.
+	 *
+	 * The reserved amount is added as a **top margin on `container` itself**
+	 * (not padding on `this`), so it becomes part of this component's own
+	 * measured height instead of spilling into whatever the caller placed
+	 * above it. `clipChildren`/`clipToPadding` are also disabled on
+	 * `container` and its parent as a safety net, in case the reserved
+	 * amount ends up slightly short on some device/font combination.
+	 */
+	private fun reserveSpaceForFloatingHint(target: EditText) {
+		viewBinding.container.clipChildren = false
+		viewBinding.container.clipToPadding = false
+		(viewBinding.container.parent as? ViewGroup)?.apply {
+			clipChildren = false
+			clipToPadding = false
+		}
+
+		if (!mHintEnable) return
+
+		val params = viewBinding.container.layoutParams as? ConstraintLayout.LayoutParams ?: return
+		val floatedLabelHeight = target.textSize * HINT_FLOATING_SCALE
+		val reserved = (floatedLabelHeight + HINT_TOP_CLEARANCE_DP.dp).toInt()
+
+		if (params.topMargin < reserved) {
+			params.topMargin = reserved
+			viewBinding.container.layoutParams = params
+		}
+	}
+
+	/**
 	 * Creates the floating label used for the M3 hint animation and adds it
 	 * to [viewBinding.container], constrained to overlap the [EditText]
 	 * when resting and to sit above it once floated. Called once from
@@ -880,29 +1335,28 @@ class ComponentMaterialTextInputLayout(
 	 */
 	private fun setupFloatingHintLabel(target: EditText) {
 		val label = MaterialTextView(context).apply {
-			id = View.generateViewId()
+			id = generateViewId()
 			text = mHintText
 			mHintTextColor?.let { setTextColor(it) }
 			setTextSize(TypedValue.COMPLEX_UNIT_PX, target.textSize)
 			isClickable = false
 			isFocusable = false
 			labelFor = target.id
-			importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-			setBackgroundColor((context as ContextThemeWrapper).getAttributeToColor(com.google.android.material.R.attr.colorSurface))
+			importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
 		}
 
 		viewBinding.container.addView(label)
-		label.layoutParams = ConstraintLayout.LayoutParams(
-			ConstraintLayout.LayoutParams.WRAP_CONTENT,
-			ConstraintLayout.LayoutParams.WRAP_CONTENT
+		label.layoutParams = LayoutParams(
+			LayoutParams.WRAP_CONTENT,
+			LayoutParams.WRAP_CONTENT
 		).apply {
-			startToStart = target.id
 			topToTop = target.id
 			bottomToBottom = target.id
 		}
 
 		mFloatingHintLabel = label
-		updateFloatingHintLabel(target, animate = false)
+		reserveSpaceForFloatingHint(target)
+		applyHintGravity(target)
 
 		// Re-sync the resting/floated position on every layout pass — not
 		// just the first one — so it never drifts after a rotation or a
@@ -925,12 +1379,21 @@ class ComponentMaterialTextInputLayout(
 	 * rests directly over the (empty, unfocused) field, exactly like a
 	 * normal hint. Also fades the label in/out based on [mHintEnable].
 	 *
+	 * The scale pivot is recomputed on every call to match [mHintGravity]:
+	 * a `START`-aligned label shrinks from its left edge, an `END`-aligned
+	 * one from its right edge, and a `CENTER`-aligned one from its middle —
+	 * matching whichever edge (or point) it's actually anchored to, instead
+	 * of always pivoting around its own center regardless of alignment
+	 * (which used to make the label visibly drift sideways while animating).
+	 *
 	 * Driven by a single reusable [ValueAnimator] ([mHintAnimator]) instead
 	 * of a fire-and-forget [View.animate] call: any in-flight run is
-	 * canceled before starting a new one (so rapid focus changes don't pile
+	 * cancelled before starting a new one (so rapid focus changes don't pile
 	 * up competing animations), and [onDetachedFromWindow] cancels it too,
 	 * so nothing keeps animating — or holding a reference to this view's
-	 * [Context] — after the field leaves the screen.
+	 * [Context] — after the field leaves the screen. The motion itself uses
+	 * [FastOutSlowInInterpolator], Material's standard "emphasized" easing
+	 * curve, instead of a generic ease-in-ease-out.
 	 *
 	 * @param animate `false` on first layout to avoid an unwanted entrance
 	 *   animation, and on every re-sync triggered by [mHintLayoutListener];
@@ -939,9 +1402,28 @@ class ComponentMaterialTextInputLayout(
 	private fun updateFloatingHintLabel(target: EditText, animate: Boolean) {
 		val label = mFloatingHintLabel ?: return
 
+		label.pivotY = label.height / 2f
+		label.pivotX = when (mHintGravity) {
+			HintGravity.START -> 0f
+			HintGravity.CENTER -> label.width / 2f
+			HintGravity.END -> label.width.toFloat()
+		}
+
 		val isFloating = target.isFocused || !target.text.isNullOrEmpty()
 		val targetScale = if (isFloating) HINT_FLOATING_SCALE else 1f
-		val targetTranslationY = if (isFloating) -(target.height / 2f) else 0f
+		val targetTranslationY = if (isFloating) {
+			// Move the label from its resting position (vertically centered
+			// on `target`) up past `container`'s own top edge — where the
+			// border actually is — by the label's own floated height plus a
+			// small clearance gap, instead of just clearing `target`'s top
+			// edge (which sits *inside* the bordered box and used to leave
+			// the label overlapping the border itself, clipping its text).
+			val restingCenterY = target.top + target.height / 2f
+			val floatedLabelHalfHeight = (target.textSize * HINT_FLOATING_SCALE) / 2f
+			-restingCenterY - floatedLabelHalfHeight - HINT_TOP_CLEARANCE_DP.dp
+		} else {
+			0f
+		}
 		val targetAlpha = if (mHintEnable) 1f else 0f
 
 		mHintAnimator?.cancel()
@@ -960,7 +1442,7 @@ class ComponentMaterialTextInputLayout(
 
 		mHintAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
 			duration = HINT_ANIMATION_DURATION_MS
-			interpolator = AccelerateDecelerateInterpolator()
+			interpolator = FastOutSlowInInterpolator()
 			addUpdateListener { animator ->
 				val fraction = animator.animatedValue as Float
 				label.scaleX = startScale + fraction * (targetScale - startScale)
@@ -1139,6 +1621,7 @@ class ComponentMaterialTextInputLayout(
 		if (bool) {
 			applyDividerColor(mColorOnError)
 			viewBinding.message.text = mErrorText
+			viewBinding.message.visibility = VISIBLE
 			viewBinding.message.setTextColor(mColorError)
 			viewBinding.counter.setTextColor(mColorError)
 			viewBinding.prefix.setTextColor(mColorError)
@@ -1149,6 +1632,7 @@ class ComponentMaterialTextInputLayout(
 			val focused = mEditText?.isFocused == true
 			applyDividerColor(if (focused) mColorPrimary else mColorOutline)
 			viewBinding.message.text = mHelperText
+			viewBinding.message.visibility = if (mHelperEnable) VISIBLE else GONE
 			mHelperTextColor?.let { viewBinding.message.setTextColor(it) }
 			mCounterTextColor?.let { viewBinding.counter.setTextColor(it) }
 			mPrefixTextColor?.let { viewBinding.prefix.setTextColor(it) }
@@ -1204,6 +1688,9 @@ class ComponentMaterialTextInputLayout(
 	/** Refreshes only the leading-icon container's visibility. */
 	private fun applyStartLayout() {
 		viewBinding.start.visibility = if (mStartLayoutEnable) VISIBLE else GONE
+		(viewBinding.container.layoutParams as LayoutParams).apply {
+			marginStart = if (mStartLayoutEnable) 5 else 0
+		}
 	}
 
 	/** Shows or hides the trailing (end) icon. */
@@ -1252,6 +1739,9 @@ class ComponentMaterialTextInputLayout(
 	/** Refreshes only the trailing-icon container's visibility. */
 	private fun applyEndLayout() {
 		viewBinding.end.visibility = if (mEndLayoutEnable) VISIBLE else GONE
+		(viewBinding.container.layoutParams as LayoutParams).apply {
+			marginEnd = if (mEndLayoutEnable) 5 else 0
+		}
 	}
 
 	// wired directly to the target view instead of going through an apply*()
@@ -1323,7 +1813,7 @@ class ComponentMaterialTextInputLayout(
 	 * - `isEnabled` → disabled state
 	 * - `isSelected` → focused state
 	 *
-	 * `ef_selector_component_material_text_input_layout_outline.xml` must exist under
+	 * ef_selector_component_material_text_input_layout_outline.xml` must exist under
 	 * `res/drawable` with states in that priority order:
 	 * ```xml
 	 * <selector xmlns:android="http://schemas.android.com/apk/res/android">
@@ -1440,11 +1930,15 @@ class ComponentMaterialTextInputLayout(
 
 		// These modules depend on the EditText, so they only run now that it exists.
 		setupFloatingHintLabel(child)
+		setupPlaceholderLabel(child)
 		applyHint()
 		setupCounterTextWatcher(child)
 		refreshCounterText()
 		installAccessibilityDelegate(child)
-		child.doOnTextChanged { _, _, _, _ -> updateFloatingHintLabel(child, animate = true) }
+		child.doOnTextChanged { _, _, _, _ ->
+			updateFloatingHintLabel(child, animate = true)
+			updatePlaceholderVisibility(child, animate = true)
+		}
 	}
 
 	/**
@@ -1464,14 +1958,16 @@ class ComponentMaterialTextInputLayout(
 	}
 
 	/**
-	 * Cancels the running hint animation and detaches the layout listener
-	 * used by [setupFloatingHintLabel], so neither keeps a reference back
-	 * into this view (and its [Context]) once it's removed from the window.
+	 * Cancels running animations and detaches the layout listener used by
+	 * [setupFloatingHintLabel], so neither keeps a reference back into this
+	 * view (and its [Context]) once it's removed from the window.
 	 */
 	override fun onDetachedFromWindow() {
 		super.onDetachedFromWindow()
 		mHintAnimator?.cancel()
 		mHintAnimator = null
+		mPlaceholderAnimator?.cancel()
+		mPlaceholderAnimator = null
 		mHintLayoutListener?.let { listener -> mEditText?.removeOnLayoutChangeListener(listener) }
 	}
 
@@ -1491,5 +1987,13 @@ class ComponentMaterialTextInputLayout(
 		// and the isEnabled assignments above make the platform pick it up
 		// automatically via refreshDrawableState().
 		applyDividerColor(if (isEnabled) mColorOutline else mColorDisabledDivider)
+	}
+
+	fun String.truncate(maxChars: Int): String {
+		return if (this.length > maxChars) {
+			"${this.take(maxChars)}..."
+		} else {
+			this
+		}
 	}
 }

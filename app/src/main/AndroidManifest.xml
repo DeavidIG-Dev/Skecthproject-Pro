@@ -2,6 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools">
 
+	<!-- Para Android 9 (API 28) o inferior -->
+	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+		android:maxSdkVersion="28" />
+	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+		android:maxSdkVersion="32" />
+
 	<application
 		android:allowBackup="true"
 		android:dataExtractionRules="@xml/data_extraction_rules"
@@ -10,7 +16,20 @@
 		android:label="@string/app_name"
 		android:roundIcon="@mipmap/ic_launcher_round"
 		android:supportsRtl="true"
-		android:theme="@style/Theme.SketchprojectPro">
+		android:theme="@style/Theme.SketchprojectPro"
+		android:requestLegacyExternalStorage="true">
+
+		<activity
+			android:name="com.deavidig.skecth.project.creator.activities.ProjectModulesCreatorActivity"
+			android:exported="false"
+			android:screenOrientation="portrait"
+			android:theme="@style/Theme.SketchprojectPro.Activity.Dialog.Fullscreen" />
+
+		<activity
+			android:name="com.deavidig.skecth.project.creator.activities.ProjectCreatorActivity"
+			android:exported="false"
+			android:theme="@style/Theme.SketchprojectPro.Activity.Dialog.Fullscreen" />
+
 		<activity
 			android:name="com.deavidig.skecth.project.main.activities.MainActivity"
 			android:exported="true"

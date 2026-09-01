@@ -4,25 +4,32 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent">
 
-	<com.google.android.material.navigationrail.NavigationRailView
-		android:id="@+id/modules_gradle"
+	<androidx.core.widget.NestedScrollView
+		android:id="@+id/nested_scroll"
 		android:layout_width="wrap_content"
 		android:layout_height="0dp"
-		android:background="#141218"
-		app:headerLayout="@layout/activity_main_dialog_project_creator_gradle_floatingactionbutton"
-		app:menu="@menu/activity_main_dialog_project_creator_gradle_navigationrailview_defualt"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toTopOf="parent" />
+		app:layout_constraintTop_toTopOf="parent">
+
+		<com.deavidig.mod.deaniel.navigation.railview.widget.ComponentNavigationRailView
+			android:id="@+id/modules_gradle"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			app:headerLayout="@layout/activity_project_creator_gradle_property_floatingactionbutton"
+			app:menu="@menu/activity_project_creator_gradle_navigationrailview_defualt" />
+
+	</androidx.core.widget.NestedScrollView>
 
 	<androidx.viewpager2.widget.ViewPager2
 		android:id="@+id/modules_pager_gradle"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
 		android:orientation="horizontal"
+		android:paddingHorizontal="10dp"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintStart_toEndOf="@+id/modules_gradle"
+		app:layout_constraintStart_toEndOf="@+id/nested_scroll"
 		app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

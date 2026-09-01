@@ -18,6 +18,7 @@ open class ComponentMaterialDivider(context: Context, attrs: AttributeSet? = nul
 	init {
 		context.withStyledAttributes(attrs, R.styleable.ComponentMaterialDivider) {
 			this@ComponentMaterialDivider.setRadiusCornerSize(getDimension(R.styleable.ComponentMaterialDivider_dividerRadiusSize, 0f))
+			this@ComponentMaterialDivider.setDividerColor(ColorStateList.valueOf(getColor(R.styleable.ComponentMaterialDivider_dividerColor, R.color.colorSurface)))
 		}
 	}
 

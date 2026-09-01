@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<declare-styleable name="ComponentMaterialDivider">
+
 		<attr name="dividerRadiusSize" format="dimension" />
+
+		<attr name="dividerColor" format="color|reference" />
+
 	</declare-styleable>
 
 	<declare-styleable name="AppCompatComponentMaterialDivider">
+
 		<attr name="dividerRadiusTopLeftSize" format="dimension" />
 		<attr name="dividerRadiusTopRightSize" format="dimension" />
 		<attr name="dividerRadiusBottomLeftSize" format="dimension" />
 		<attr name="dividerRadiusBottomRightSize" format="dimension" />
+
 	</declare-styleable>
 
 	<declare-styleable name="ComponentMaterialTextInputLayout">
@@ -54,5 +60,70 @@
 		<attr name="headerTextColor" format="color" />
 		<attr name="headerTextSize" format="dimension" />
 
+		<attr name="hintGravity" format="enum">
+			<enum name="start" value="0" />
+			<enum name="center" value="1" />
+			<enum name="end" value="2" />
+		</attr>
+
+		<attr name="hintStartAnchor" format="enum">
+			<enum name="startIcon" value="1" />
+			<enum name="layout" value="2" />
+			<enum name="prefix" value="3" />
+		</attr>
+
+		<attr name="hintEndAnchor" format="enum">
+			<enum name="endIcon" value="1" />
+			<enum name="layout" value="2" />
+			<enum name="suffix" value="3" />
+		</attr>
+
+		<attr name="placeholderText" format="string" />
+		<attr name="placeholderEnable" format="boolean" />
+		<attr name="placeholderTextColor" format="color" />
+
 	</declare-styleable>
+
+	<declare-styleable name="ComponentToolbar">
+
+		<attr name="title" format="string" />
+		<attr name="subtitle" format="string" />
+		<attr name="titleTextColor" format="color" />
+		<attr name="titleTextSize" format="dimension" />
+		<attr name="titleTextAppearance" format="reference" />
+		<attr name="subtitleTextColor" format="color" />
+		<attr name="subtitleTextSize" format="dimension" />
+		<attr name="subtitleTextAppearance" format="reference" />
+
+		<attr name="titleAlignment" format="enum">
+			<enum name="start" value="0" />
+			<enum name="center" value="1" />
+			<enum name="end" value="2" />
+		</attr>
+		<attr name="subtitleAlignment" format="enum">
+			<enum name="start" value="0" />
+			<enum name="center" value="1" />
+			<enum name="end" value="2" />
+		</attr>
+
+		<attr name="navigationIcon" format="reference" />
+		<attr name="navigationIconTint" format="color" />
+		<attr name="navigationContentDescription" format="string" />
+
+		<attr name="logo" format="reference" />
+		<attr name="logoTint" format="color" />
+		<attr name="logoContentDescription" format="string" />
+
+		<attr name="leftMenu" format="reference" />
+		<attr name="rightMenu" format="reference" />
+		<attr name="leftOverflowIcon" format="reference" />
+		<attr name="rightOverflowIcon" format="reference" />
+
+		<attr name="contentInsetStartWithNavigation" format="dimension" />
+		<attr name="contentInsetEnd" format="dimension" />
+
+		<attr name="enableHideOnScroll" format="boolean" />
+
+	</declare-styleable>
+
 </resources>

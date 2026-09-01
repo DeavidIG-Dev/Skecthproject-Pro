@@ -7,14 +7,12 @@
 
 	<style name="Theme.SketchprojectPro" parent="Base.Theme.SketchprojectPro" />
 
-	<style name="DialogAnimation">
+	<style name="DialogAnimation" parent="@android:style/Animation.Dialog">
 		<item name="android:windowEnterAnimation">@android:anim/fade_in</item>
 		<item name="android:windowExitAnimation">@android:anim/fade_out</item>
 	</style>
 
-	<style name="Theme.SketchprojectPro.Activity.Dialog" parent="Theme.Material3.DayNight.Dialog">
-		<item name="windowNoTitle">true</item>
-		<item name="android:windowIsFloating">true</item>
+	<style name="Theme.SketchprojectPro.Activity.Dialog.Fullscreen" parent="Theme.Material3.DayNight.NoActionBar">
 		<item name="android:windowAnimationStyle">@style/DialogAnimation</item>
 	</style>
 

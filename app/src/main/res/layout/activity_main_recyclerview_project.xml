@@ -24,7 +24,7 @@
 		android:layout_width="50dp"
 		android:layout_height="50dp"
 		android:layout_marginStart="8dp"
-		android:foreground="@drawable/ef_gradient_bottomtop_dark"
+		android:background="@drawable/ef_gradient_bottomtop_dark"
 		app:shapeAppearance="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
@@ -68,10 +68,10 @@
 		app:layout_constraintStart_toStartOf="@+id/project_icon" />
 
 	<com.deavidig.mod.deaniel.divider.widget.ComponentMaterialDivider
-		android:layout_width="1.5dp"
+		android:layout_width="2dp"
 		android:layout_height="35dp"
 		android:layout_marginEnd="7.5dp"
-		android:background="?attr/colorSurfaceContainerHigh"
+		android:background="?attr/colorSurfaceContainerHighest"
 		app:dividerRadiusSize="8dp"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintEnd_toStartOf="@+id/options_project"

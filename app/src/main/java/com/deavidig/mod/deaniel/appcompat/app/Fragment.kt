@@ -12,8 +12,6 @@ fun Fragment.getAttributeToColor(@AttrRes id: Int): Int {
 	return typedValue.data
 }
 
-
-
 fun Fragment.getAttributeToString(@StringRes id: Int): String {
 	return ContextCompat.getString(this.requireContext(), id)
 }

@@ -1,12 +1,21 @@
 package com.deavidig.skecth.project.main.activities
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.deavidig.mod.deaniel.appcompat.app.applyWindowInsets
-import com.deavidig.skecth.project.main.dialogs.ProjectManagerDialogFragment
+import com.deavidig.skecth.project.creator.activities.ProjectCreatorActivity
 import com.deavidig.sketchprojectpro.databinding.ActivityMainBinding
 import com.deavidig.sketchprojectpro.databinding.ActivityMainBottomsheetFilterBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -15,6 +24,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.tabs.TabLayout
 
 class MainActivity : AppCompatActivity() {
+
 	private lateinit var layoutBinding: ActivityMainBinding
 	private lateinit var renameBottomSheetFilterBinding: ActivityMainBottomsheetFilterBinding
 	private lateinit var newTabBottomSheetFilterBinding: ActivityMainBottomsheetFilterBinding
@@ -22,7 +32,17 @@ class MainActivity : AppCompatActivity() {
 	private lateinit var renameBottomSheetDialog: BottomSheetDialog
 	private lateinit var newTabBottomSheetDialog: BottomSheetDialog
 
-	private val projectManager = ProjectManagerDialogFragment()
+	private val mIntent = Intent()
+
+	private val requestLegacyPermissionLauncher = registerForActivityResult(
+		ActivityResultContracts.RequestMultiplePermissions()
+	) { permissions ->
+		val isGranted = permissions[Manifest.permission.WRITE_EXTERNAL_STORAGE] ?: false
+		if (!isGranted) {
+			Toast.makeText(this, "Permiso denegado. No se puede guardar el proyecto.", Toast.LENGTH_SHORT).show()
+			checkAndRequestStoragePermission()
+		}
+	}
 
 	@SuppressLint("RestrictedApi")
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,7 +67,7 @@ class MainActivity : AppCompatActivity() {
 
 		newTabBottomSheetDialog = BottomSheetDialog(this)
 		newTabBottomSheetDialog.setContentView(newTabBottomSheetFilterBinding.root)
-		newTabBottomSheetFilterBinding.nameFilterContainer.hint = "Name Filter"
+		newTabBottomSheetFilterBinding.nameFilterContainer.setHintText("Name Filter")
 
 		setupBottomSheetListeners()
 		setupFabListeners()
@@ -55,7 +75,8 @@ class MainActivity : AppCompatActivity() {
 
 	private fun setupFabListeners() {
 		layoutBinding.projectCreator.setOnClickListener {
-			projectManager.show(supportFragmentManager, "");
+			mIntent.setClass(this, ProjectCreatorActivity::class.java)
+			startActivity(mIntent)
 		}
 	}
 
@@ -63,8 +84,8 @@ class MainActivity : AppCompatActivity() {
 		newTabBottomSheetFilterBinding.acceptButton.setOnClickListener {
 			val newName = newTabBottomSheetFilterBinding.nameFilter.text?.toString()?.trim()!!
 
-			if (!newName.isEmpty() && newName.length <= newTabBottomSheetFilterBinding.nameFilterContainer.counterMaxLength) {
-				newTabBottomSheetFilterBinding.nameFilterContainer.isErrorEnabled = false
+			if (!newName.isEmpty() && newName.length <= newTabBottomSheetFilterBinding.nameFilterContainer.getCounterMaxLength()) {
+				newTabBottomSheetFilterBinding.nameFilterContainer.setErrorEnabled(false)
 
 				val newTab = layoutBinding.tabFilter.newTab().apply { text = newName }
 				val lastIndex = layoutBinding.tabFilter.tabCount - 1
@@ -73,12 +94,12 @@ class MainActivity : AppCompatActivity() {
 
 				newTabBottomSheetFilterBinding.nameFilter.setText("")
 				newTabBottomSheetDialog.dismiss()
-			} else if (newName.length > newTabBottomSheetFilterBinding.nameFilterContainer.counterMaxLength) {
-				newTabBottomSheetFilterBinding.nameFilter.setText(newTabBottomSheetFilterBinding.nameFilter.text!!.subSequence(0, newTabBottomSheetFilterBinding.nameFilterContainer.counterMaxLength))
-				newTabBottomSheetFilterBinding.nameFilter.setSelection(newTabBottomSheetFilterBinding.nameFilterContainer.counterMaxLength)
+			} else if (newName.length > newTabBottomSheetFilterBinding.nameFilterContainer.getCounterMaxLength()) {
+				newTabBottomSheetFilterBinding.nameFilter.setText(newTabBottomSheetFilterBinding.nameFilter.text!!.subSequence(0, newTabBottomSheetFilterBinding.nameFilterContainer.getCounterMaxLength()))
+				newTabBottomSheetFilterBinding.nameFilter.setSelection(newTabBottomSheetFilterBinding.nameFilterContainer.getCounterMaxLength())
 			} else {
-				newTabBottomSheetFilterBinding.nameFilterContainer.isErrorEnabled = true
-				newTabBottomSheetFilterBinding.nameFilterContainer.error = "Name can't be empty for the Filter."
+				newTabBottomSheetFilterBinding.nameFilterContainer.setErrorEnabled(true)
+				newTabBottomSheetFilterBinding.nameFilterContainer.setErrorText("Name can't be empty for the Filter.")
 			}
 		}
 
@@ -151,5 +172,35 @@ class MainActivity : AppCompatActivity() {
 				}
 			}
 		})
+	}
+
+	private fun checkAndRequestStoragePermission(): Boolean {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+			if (!Environment.isExternalStorageManager()) {
+				val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+					data = "package:${packageName}".toUri()
+				}
+				startActivity(intent)
+				return false
+			}
+			return true
+		}
+		else {
+			val writePermission = ContextCompat.checkSelfPermission(
+				this,
+				Manifest.permission.WRITE_EXTERNAL_STORAGE
+			)
+
+			if (writePermission != PackageManager.PERMISSION_GRANTED) {
+				requestLegacyPermissionLauncher.launch(
+					arrayOf(
+						Manifest.permission.WRITE_EXTERNAL_STORAGE,
+						Manifest.permission.READ_EXTERNAL_STORAGE
+					)
+				)
+				return false
+			}
+			return true
+		}
 	}
 }
