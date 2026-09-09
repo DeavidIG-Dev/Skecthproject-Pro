@@ -1,4 +1,4 @@
-package com.deavidig.mod.deaniel.toolbar.widget
+package com.deavidig.mod.deanielig.toolbar.widget
 
 import android.content.Context
 import android.content.res.ColorStateList
@@ -44,12 +44,34 @@ import com.deavidig.sketchprojectpro.R
 import com.google.android.material.appbar.AppBarLayout
 import kotlin.math.max
 import kotlin.math.min
+import androidx.core.view.get
 
 /**
  * A custom top app bar built from scratch on top of [ViewGroup] -it does not
  * wrap or extend `androidx.appcompat.widget.Toolbar` internally- designed to
  * cover a case the classic Toolbar does not: a menu on the LEFT **and** a
  * menu on the RIGHT at the same time.
+ *
+ * This component lays out, directly as its own children:
+ *
+ * - **Navigation icon**, with its own tint, content description, click and
+ *   long-click listeners.
+ * - **Logo** (a secondary, custom-extension icon with no equivalent in the
+ *   M3 spec), optionally clickable and long-clickable.
+ * - **Title** / **subtitle**, each with independent color, size, typeface
+ *   and horizontal alignment ([HorizontalAlignment]).
+ * - **Left menu** / **right menu**, each inflated from its own `@menu`
+ *   resource. Items declaring `app:showAsAction="always"` render as a
+ *   button (icon, or text when the item has no icon); everything else -and
+ *   anything explicitly forced via [setLeftItemAlwaysInOverflow]/
+ *   [setRightItemAlwaysInOverflow]- collapses into a single overflow ("⋮")
+ *   button per side.
+ * - Selection lifecycle listeners ([OnItemMenuChangedListener],
+ *   [OnItemMenuLongChangedListener]) for each menu, covering select,
+ *   reselect and unselect, independently for short-press and long-press.
+ * - Reactive [MenuItem]s: mutating an item's icon/title/showAsAction/
+ *   visibility/enabled state after the fact automatically refreshes the bar
+ *   -see the "MenuItem reactivity" region.
  *
  * ### Material Design 3 alignment
  * - Typography roles `titleLarge`/`titleMedium` for title/subtitle.
@@ -68,13 +90,10 @@ import kotlin.math.min
  * [isShowAsActionAlways]), since `android.view.MenuItem` does not expose a
  * public getter for it.
  *
- * ### Nested submenus (long-press)
- * An item declaring a nested `<menu>` in XML reveals it as a flyout on
- * long-press instead of firing the normal long-click callbacks -see
- * [showItemSubMenu]. The recommended pattern for this is combining it with
- * `android:menuCategory="secondary"` and `app:showAsAction="always"` (a
- * persistent action whose variants are one long-press away), though it is
- * not required: any item with a nested `<menu>` gets this behavior.
+ * ### Nested submenus
+ * An item declaring a nested `<menu>` in XML reveals it as a flyout on a
+ * normal tap -matching standard Android menu semantics- instead of firing
+ * its usual click callbacks. See [showItemSubMenu].
  *
  * ### Reactive MenuItems
  * `android.view.MenuItem` never notifies anyone when it changes. Every item
@@ -92,6 +111,57 @@ import kotlin.math.min
  * custom `Behavior` hiding behind this class -the `AppBarLayout` itself
  * resolves scrolling against the `CoordinatorLayout`, exactly like it would
  * for any real Toolbar.
+ *
+ * ### Basic usage (XML)
+ * ```xml
+ * <com.google.android.material.appbar.AppBarLayout
+ *     android:layout_width="match_parent"
+ *     android:layout_height="wrap_content">
+ *
+ *     <com.deavidig.components.toolbar.ComponentToolbar
+ *         android:id="@+id/toolbar"
+ *         android:layout_width="match_parent"
+ *         android:layout_height="wrap_content"
+ *         app:layout_scrollFlags="scroll|enterAlways"
+ *         app:title="Inbox"
+ *         app:subtitle="3 new messages"
+ *         app:titleAlignment="center"
+ *         app:navigationIcon="@drawable/ic_menu_hamburger_24"
+ *         app:leftMenu="@menu/menu_left"
+ *         app:rightMenu="@menu/menu_right" />
+ *
+ * </com.google.android.material.appbar.AppBarLayout>
+ * ```
+ * (requires declaring the `ComponentToolbar` styleable from
+ * `attrs_component_toolbar.xml` under `res/values/` of your module -see the
+ * "XML attributes" region.)
+ *
+ * ### Basic usage (Kotlin)
+ * ```kotlin
+ * toolbar.setNavigationOnClickListener { drawerLayout.open() }
+ *
+ * toolbar.inflateRightMenu(R.menu.menu_right)
+ * toolbar.setOnRightItemMenuClickListener(object : ComponentToolbar.OnItemMenuClickListener {
+ *     override fun onMenuItemClicked(item: MenuItem) {
+ *         Log.d("Toolbar", "Clicked ${item.title}")
+ *     }
+ * })
+ *
+ * toolbar.setRightItemAlwaysInOverflow(R.id.action_settings, alwaysInOverflow = true)
+ * ```
+ *
+ * @constructor Sets up the internal child views (navigation icon, logo,
+ *   title/subtitle, both menu rows and their overflow buttons), applies the
+ *   Material 3 theme defaults, and finally parses [attrs]/[defStyleAttr] so
+ *   any explicit XML attribute overrides those defaults.
+ * @param context source context used to inflate drawables, resolve theme
+ *   attributes and build child views.
+ * @param attrs XML attributes for the component; see the `ComponentToolbar`
+ *   styleable in `attrs_component_toolbar.xml`.
+ * @param defStyleAttr default style attribute resolved from the theme when
+ *   an attribute isn't explicitly set in [attrs].
+ *
+ * @author DeanielIG, DeavidIG
  */
 class ComponentToolbar @JvmOverloads constructor(
 	context: Context,
@@ -108,7 +178,6 @@ class ComponentToolbar @JvmOverloads constructor(
 	/** Horizontal alignment available for the title and the subtitle, each configurable independently. */
 	enum class HorizontalAlignment { START, CENTER, END }
 
-	// region Listener interfaces
 
 	/** Invoked when the navigation icon is tapped. */
 	fun interface OnNavigationClickListener {
@@ -158,9 +227,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		fun onMenuLongReselect(item: MenuItem)
 	}
 
-	// endregion
-
-	// region Internal views
 
 	private val navigationIconView: AppCompatImageButton = AppCompatImageButton(context)
 	private val logoView: AppCompatImageButton = AppCompatImageButton(context)
@@ -171,9 +237,6 @@ class ComponentToolbar @JvmOverloads constructor(
 	private val titleView: AppCompatTextView = AppCompatTextView(context)
 	private val subtitleView: AppCompatTextView = AppCompatTextView(context)
 
-	// endregion
-
-	// region Menu state
 
 	/** [view] is either an AppCompatImageButton (item with an icon) or a text AppCompatButton (item without one). */
 	private data class MenuButtonEntry(val item: MenuItem, val view: View)
@@ -199,9 +262,6 @@ class ComponentToolbar @JvmOverloads constructor(
 	/** Tint applied to menu item icons and to the overflow button; `null` means "keep the drawable's own color". */
 	private var menuIconTint: Int? = null
 
-	// endregion
-
-	// region Public listeners
 
 	private var onNavigationClickListener: OnNavigationClickListener? = null
 	private var onNavigationLongClickListener: OnNavigationLongClickListener? = null
@@ -218,13 +278,10 @@ class ComponentToolbar @JvmOverloads constructor(
 	private var onRightItemMenuChangedListener: OnItemMenuChangedListener? = null
 	private var onRightItemMenuLongChangedListener: OnItemMenuLongChangedListener? = null
 
-	// endregion
-
-	// region Dimensions / configuration
 
 	private val iconTouchTargetSize: Int = dpToPx(48)
 	private val iconDrawablePadding: Int = dpToPx(12)
-	private val rippleInset: Int = dpToPx(8) // see createCompactRipple(): shrinks the ripple inside the 48dp touch target
+	private val rippleInset: Int = dpToPx(6) // see createCompactRipple(): shrinks the ripple inside the 48dp touch target
 	private val menuItemSpacing: Int = dpToPx(4)
 	private val titleBlockHorizontalMargin: Int = dpToPx(12)
 	private val minTitleReserve: Int = dpToPx(48)
@@ -239,8 +296,6 @@ class ComponentToolbar @JvmOverloads constructor(
 
 	private var titleAlignment: HorizontalAlignment = HorizontalAlignment.START
 	private var subtitleAlignment: HorizontalAlignment = HorizontalAlignment.START
-
-	// endregion
 
 	init {
 		clipToPadding = false
@@ -281,7 +336,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		attrs?.let { applyXmlAttributes(it, defStyleAttr) }
 	}
 
-	// region Internal view setup
 
 	private fun setupNavigationIconView() {
 		navigationIconView.scaleType = ImageView.ScaleType.CENTER_INSIDE
@@ -325,9 +379,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		button.layoutParams = LinearLayout.LayoutParams(iconTouchTargetSize, iconTouchTargetSize)
 	}
 
-	// endregion
-
-	// region Public API · Navigation icon
 	// M3: the Top App Bar's "leading icon" -opens navigation (drawer/back).
 	// 48dp touch target with a 24dp centered icon, per spec.
 
@@ -341,21 +392,26 @@ class ComponentToolbar @JvmOverloads constructor(
 	/** @see setNavigationIcon */
 	fun setNavigationIcon(@DrawableRes iconRes: Int) = setNavigationIcon(ContextCompat.getDrawable(context, iconRes))
 
+	/** Returns the current navigation icon drawable, or `null` if none is set. */
 	fun getNavigationIcon(): Drawable? = navigationIconView.drawable
 
+	/** Tints the navigation icon with a single color. */
 	fun setNavigationIconTint(@ColorInt color: Int) {
 		ImageViewCompat.setImageTintList(navigationIconView, ColorStateList.valueOf(color))
 	}
 
+	/** Tints the navigation icon with a full [ColorStateList] (e.g. different colors per pressed/disabled state). */
 	fun setNavigationIconTintList(tint: ColorStateList?) {
 		ImageViewCompat.setImageTintList(navigationIconView, tint)
 	}
 
+	/** Sets the accessibility content description and tooltip text for the navigation icon. */
 	fun setNavigationContentDescription(description: CharSequence?) {
 		navigationIconView.contentDescription = description
 		if (!description.isNullOrEmpty()) TooltipCompat.setTooltipText(navigationIconView, description)
 	}
 
+	/** @see setNavigationContentDescription */
 	fun setNavigationContentDescription(@StringRes resId: Int) = setNavigationContentDescription(context.getString(resId))
 
 	/** The view only becomes clickable once both a listener and an icon are set. */
@@ -364,134 +420,158 @@ class ComponentToolbar @JvmOverloads constructor(
 		navigationIconView.isClickable = listener != null && navigationIconView.drawable != null
 	}
 
+	/** The view only becomes long-clickable once both a listener and an icon are set. */
 	fun setNavigationOnLongClickListener(listener: OnNavigationLongClickListener?) {
 		onNavigationLongClickListener = listener
 		navigationIconView.isLongClickable = listener != null && navigationIconView.drawable != null
 	}
 
-	// endregion
-
-	// region Public API · Logo / secondary icon
 	// Not part of the M3 Top App Bar spec (M3 does not define its own
 	// "logo" slot the way the classic Toolbar did), but kept as a custom
 	// extension since it was explicitly requested; that is why it stays
 	// 100% optional and non-clickable until a listener is assigned.
 
+	/** Sets the logo drawable, or `null` to hide it. */
 	fun setLogo(icon: Drawable?) {
 		logoView.setImageDrawable(icon)
 		logoView.visibility = if (icon != null) VISIBLE else GONE
 		requestLayout()
 	}
 
+	/** @see setLogo */
 	fun setLogo(@DrawableRes iconRes: Int) = setLogo(ContextCompat.getDrawable(context, iconRes))
+
+	/** Returns the current logo drawable, or `null` if none is set. */
 	fun getLogo(): Drawable? = logoView.drawable
 
+	/** Tints the logo with a single color. */
 	fun setLogoTint(@ColorInt color: Int) {
 		ImageViewCompat.setImageTintList(logoView, ColorStateList.valueOf(color))
 	}
 
+	/** Tints the logo with a full [ColorStateList]. */
 	fun setLogoTintList(tint: ColorStateList?) {
 		ImageViewCompat.setImageTintList(logoView, tint)
 	}
 
+	/** Sets the accessibility content description and tooltip text for the logo. */
 	fun setLogoContentDescription(description: CharSequence?) {
 		logoView.contentDescription = description
 		if (!description.isNullOrEmpty()) TooltipCompat.setTooltipText(logoView, description)
 	}
 
+	/** The logo only becomes clickable once a listener is assigned -see the region note above. */
 	fun setOnLogoClickListener(listener: OnLogoClickListener?) {
 		onLogoClickListener = listener
 		logoView.isClickable = listener != null && logoView.drawable != null
 	}
 
+	/** The logo only becomes long-clickable once a listener is assigned. */
 	fun setOnLogoLongClickListener(listener: OnLogoLongClickListener?) {
 		onLogoLongClickListener = listener
 		logoView.isLongClickable = listener != null && logoView.drawable != null
 	}
 
-	// endregion
-
-	// region Public API · Title / Subtitle
 	// M3: the title uses the `titleLarge` type role; the subtitle (outside
 	// the standard spec but common in real apps) uses `titleMedium`. Both
 	// default colors come from `colorOnSurface` -see applyMaterial3Defaults().
-	//
 	// Alignment: each line is laid out spanning the FULL width available
 	// between the navigation/menu blocks, and it is the TextView's own
 	// `gravity` that decides where the text lands within that width. This
 	// lets the title and the subtitle use different alignments without
 	// coupling their measured widths together -see [layoutTitleSubtitleBlock].
 
+	/** Sets the title text, or `null`/empty to hide it. */
 	fun setTitle(title: CharSequence?) {
 		titleView.text = title
 		titleView.visibility = if (title.isNullOrEmpty()) GONE else VISIBLE
 		requestLayout()
 	}
 
+	/** @see setTitle */
 	fun setTitle(@StringRes resId: Int) = setTitle(context.getString(resId))
+	/** Returns the current title text, or `null` if none is set. */
 	fun getTitle(): CharSequence? = titleView.text
+	/** Sets the title's text color. */
 	fun setTitleTextColor(@ColorInt color: Int) = titleView.setTextColor(color)
+	/** Sets the title's text color from a [ColorStateList]. */
 	fun setTitleTextColor(colors: ColorStateList) = titleView.setTextColor(colors)
+	/** Sets the title's text size, in SP. */
 	fun setTitleTextSize(sizeSp: Float) = titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+	/** Sets the title's typeface and style. */
 	fun setTitleTypeface(typeface: Typeface?, style: Int = Typeface.NORMAL) = titleView.setTypeface(typeface, style)
+	/** Applies a text appearance style resource to the title (covers color, size and font in one call). */
 	fun setTitleTextAppearance(@StyleRes resId: Int) = TextViewCompat.setTextAppearance(titleView, resId)
 
+	/** Sets the subtitle text, or `null`/empty to hide it. */
 	fun setSubtitle(subtitle: CharSequence?) {
 		subtitleView.text = subtitle
 		subtitleView.visibility = if (subtitle.isNullOrEmpty()) GONE else VISIBLE
 		requestLayout()
 	}
 
+	/** @see setSubtitle */
 	fun setSubtitle(@StringRes resId: Int) = setSubtitle(context.getString(resId))
+	/** Returns the current subtitle text, or `null` if none is set. */
 	fun getSubtitle(): CharSequence? = subtitleView.text
+	/** Sets the subtitle's text color. */
 	fun setSubtitleTextColor(@ColorInt color: Int) = subtitleView.setTextColor(color)
+	/** Sets the subtitle's text color from a [ColorStateList]. */
 	fun setSubtitleTextColor(colors: ColorStateList) = subtitleView.setTextColor(colors)
+	/** Sets the subtitle's text size, in SP. */
 	fun setSubtitleTextSize(sizeSp: Float) = subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+	/** Sets the subtitle's typeface and style. */
 	fun setSubtitleTypeface(typeface: Typeface?, style: Int = Typeface.NORMAL) = subtitleView.setTypeface(typeface, style)
+	/** Applies a text appearance style resource to the subtitle. */
 	fun setSubtitleTextAppearance(@StyleRes resId: Int) = TextViewCompat.setTextAppearance(subtitleView, resId)
 
+	/** Sets all four title margins at once, in pixels. */
 	fun setTitleMargins(start: Int, top: Int, end: Int, bottom: Int) {
 		titleMarginStart = start; titleMarginTop = top; titleMarginEnd = end; titleMarginBottom = bottom
 		requestLayout()
 	}
 
+	/** Sets the start margin of the title/subtitle block, in pixels. */
 	fun setTitleMarginStart(@Px margin: Int) { titleMarginStart = margin; requestLayout() }
+	/** Sets the top margin of the title/subtitle block, in pixels. */
 	fun setTitleMarginTop(@Px margin: Int) { titleMarginTop = margin; requestLayout() }
+	/** Sets the end margin of the title/subtitle block, in pixels. */
 	fun setTitleMarginEnd(@Px margin: Int) { titleMarginEnd = margin; requestLayout() }
+	/** Sets the bottom margin of the title/subtitle block, in pixels. */
 	fun setTitleMarginBottom(@Px margin: Int) { titleMarginBottom = margin; requestLayout() }
 
 	/** Title alignment: START (default), CENTER or END. Independent from the subtitle's. */
 	fun setTitleAlignment(alignment: HorizontalAlignment) { titleAlignment = alignment; requestLayout() }
+	/** Returns the current title alignment. */
 	fun getTitleAlignment(): HorizontalAlignment = titleAlignment
 
 	/** Subtitle alignment: START (default), CENTER or END. Independent from the title's. */
 	fun setSubtitleAlignment(alignment: HorizontalAlignment) { subtitleAlignment = alignment; requestLayout() }
+	/** Returns the current subtitle alignment. */
 	fun getSubtitleAlignment(): HorizontalAlignment = subtitleAlignment
 
 	/** Backwards-compatible shortcut, equivalent to `setTitleAlignment(CENTER or START)`. Prefer [setTitleAlignment]. */
 	fun setTitleCentered(centered: Boolean) =
 		setTitleAlignment(if (centered) HorizontalAlignment.CENTER else HorizontalAlignment.START)
 
+	/** Whether the title is currently centered. @see setTitleCentered */
 	fun isTitleCentered(): Boolean = titleAlignment == HorizontalAlignment.CENTER
 
-	// endregion
 
-	// region Public API · Content insets
-
+	/** Sets the leading inset applied after the navigation icon, in pixels. */
 	fun setContentInsetStartWithNavigation(@Px inset: Int) { contentInsetStart = inset; requestLayout() }
+	/** Sets the trailing inset applied before the right-side content, in pixels. */
 	fun setContentInsetEnd(@Px inset: Int) { contentInsetEnd = inset; requestLayout() }
 	fun getContentInsetStart(): Int = contentInsetStart
 	fun getContentInsetEnd(): Int = contentInsetEnd
 
-	// endregion
-
-	// region Public API · LEFT menu
 	// M3 does not officially define a left-side menu (only a "leading icon"
 	// and "trailing icons"); this remains a custom extension of the
 	// component. Visually these icons are treated exactly like the ones on
 	// the right: same touch target size, same `colorOnSurfaceVariant` tint,
 	// same overflow mechanism.
 
+	/** Inflates [menuRes] as this side's menu, replacing whatever was there before. */
 	fun inflateLeftMenu(@MenuRes menuRes: Int) {
 		val popup = PopupMenu(context, leftMenuView)
 		popup.menuInflater.inflate(menuRes, popup.menu)
@@ -507,6 +587,7 @@ class ComponentToolbar @JvmOverloads constructor(
 	/** Returns the currently selected item (reactive), or `null` if nothing is selected. */
 	fun getSelectedLeftMenuItem(): MenuItem? = leftMenuHolder?.menu?.findItem(selectedLeftItemId)?.let { wrapReactive(it, isLeft = true) }
 
+	/** Removes all items from this side's menu and resets its selection state. */
 	fun clearLeftMenu() {
 		leftMenuHolder?.menu?.clear()
 		leftEntries = emptyList()
@@ -528,7 +609,9 @@ class ComponentToolbar @JvmOverloads constructor(
 	fun setOnLeftItemMenuChangedListener(listener: OnItemMenuChangedListener?) { onLeftItemMenuChangedListener = listener }
 	fun setOnLeftItemMenuLongChangedListener(listener: OnItemMenuLongChangedListener?) { onLeftItemMenuLongChangedListener = listener }
 
+	/** Replaces the "⋮" overflow icon for this side. */
 	fun setLeftOverflowIcon(icon: Drawable?) { leftOverflowButton.setImageDrawable(icon) }
+	/** @see setLeftOverflowIcon */
 	fun setLeftOverflowIcon(@DrawableRes iconRes: Int) = setLeftOverflowIcon(ContextCompat.getDrawable(context, iconRes))
 
 	/**
@@ -542,10 +625,8 @@ class ComponentToolbar @JvmOverloads constructor(
 		requestLayout()
 	}
 
-	// endregion
 
-	// region Public API · RIGHT menu
-
+	/** Inflates [menuRes] as this side's menu, replacing whatever was there before. */
 	fun inflateRightMenu(@MenuRes menuRes: Int) {
 		val popup = PopupMenu(context, rightMenuView)
 		popup.menuInflater.inflate(menuRes, popup.menu)
@@ -555,9 +636,12 @@ class ComponentToolbar @JvmOverloads constructor(
 		requestLayout()
 	}
 
+	/** @see getLeftMenu */
 	fun getRightMenu(): Menu? = rightMenuHolder?.menu?.let { ReactiveMenu(it) { item -> wrapReactive(item, isLeft = false) } }
+	/** @see getSelectedLeftMenuItem */
 	fun getSelectedRightMenuItem(): MenuItem? = rightMenuHolder?.menu?.findItem(selectedRightItemId)?.let { wrapReactive(it, isLeft = false) }
 
+	/** Removes all items from this side's menu and resets its selection state. */
 	fun clearRightMenu() {
 		rightMenuHolder?.menu?.clear()
 		rightEntries = emptyList()
@@ -566,6 +650,7 @@ class ComponentToolbar @JvmOverloads constructor(
 		requestLayout()
 	}
 
+	/** @see refreshLeftMenu */
 	fun refreshRightMenu() {
 		val menu = rightMenuHolder?.menu ?: return
 		rightEntries = buildEntries(menu, isLeft = false)
@@ -578,7 +663,9 @@ class ComponentToolbar @JvmOverloads constructor(
 	fun setOnRightItemMenuChangedListener(listener: OnItemMenuChangedListener?) { onRightItemMenuChangedListener = listener }
 	fun setOnRightItemMenuLongChangedListener(listener: OnItemMenuLongChangedListener?) { onRightItemMenuLongChangedListener = listener }
 
+	/** @see setLeftOverflowIcon */
 	fun setRightOverflowIcon(icon: Drawable?) { rightOverflowButton.setImageDrawable(icon) }
+	/** @see setLeftOverflowIcon */
 	fun setRightOverflowIcon(@DrawableRes iconRes: Int) = setRightOverflowIcon(ContextCompat.getDrawable(context, iconRes))
 
 	/** Same as [setLeftItemAlwaysInOverflow], for the right side. */
@@ -588,9 +675,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		requestLayout()
 	}
 
-	// endregion
-
-	// region Public API · Menu icon styling
 
 	/** Tint applied to ALL item icons (both sides) and the overflow button. `null` keeps each drawable's own color. */
 	fun setMenuIconTint(@ColorInt color: Int?) {
@@ -600,10 +684,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		applyOverflowButtonTint()
 	}
 
-	// endregion
-
-	// region MenuItem reactivity
-	//
 	// android.view.MenuItem never notifies anyone when it changes -there is
 	// no listener for "my icon/title/showAsAction just changed"- so every
 	// item is wrapped in a proxy that, besides delegating everything to the
@@ -611,7 +691,6 @@ class ComponentToolbar @JvmOverloads constructor(
 	// setter that can affect what's on screen is called. This is what
 	// buildEntries()/getLeftMenu()/getRightMenu() hand out -never the raw
 	// MenuItem.
-	//
 	// Note: `setChecked` intentionally does NOT trigger a refresh -that is
 	// already handled by our own selection cycle (handleMenuItemClicked),
 	// and there is currently no visual representation of the "checked"
@@ -644,7 +723,7 @@ class ComponentToolbar @JvmOverloads constructor(
 		private val delegate: Menu,
 		private val onChanged: (MenuItem) -> MenuItem
 	) : Menu by delegate {
-		override fun getItem(index: Int): MenuItem = onChanged(delegate.getItem(index))
+		override fun getItem(index: Int): MenuItem = onChanged(delegate[index])
 		override fun findItem(id: Int): MenuItem? = delegate.findItem(id)?.let(onChanged)
 		override fun add(title: CharSequence?): MenuItem = onChanged(delegate.add(title))
 		override fun add(titleRes: Int): MenuItem = onChanged(delegate.add(titleRes))
@@ -652,11 +731,12 @@ class ComponentToolbar @JvmOverloads constructor(
 			onChanged(delegate.add(groupId, itemId, order, title))
 		override fun add(groupId: Int, itemId: Int, order: Int, titleRes: Int): MenuItem =
 			onChanged(delegate.add(groupId, itemId, order, titleRes))
+
+		override fun clear() {
+			delegate.clear()
+		}
 	}
 
-	// endregion
-
-	// region Building menu buttons and overflow
 
 	/**
 	 * Checks whether [item] was inflated with `app:showAsAction="always"`.
@@ -687,16 +767,17 @@ class ComponentToolbar @JvmOverloads constructor(
 			val item = wrapReactive(rawItem, isLeft)
 
 			val view = createEntryView(item)
-			view.setOnClickListener { handleMenuItemClicked(menu, item, isLeft) }
 
 			if (item.hasSubMenu()) {
-				// A nested <menu> takes over long-press entirely: it reveals
-				// its own flyout instead of firing the normal long-click
-				// callbacks. See showItemSubMenu() KDoc for the rationale.
-				view.setOnLongClickListener { showItemSubMenu(view, item, isLeft); true }
+				// An item with a nested <menu> reveals it on a normal tap,
+				// matching standard Android menu semantics (tapping an item
+				// that has a submenu opens the submenu, it doesn't fire a
+				// click action). See showItemSubMenu() KDoc.
+				view.setOnClickListener { showItemSubMenu(view, item, isLeft) }
 			} else {
-				view.setOnLongClickListener { handleMenuItemLongClicked(menu, item, isLeft) }
+				view.setOnClickListener { handleMenuItemClicked(menu, item, isLeft) }
 			}
+			view.setOnLongClickListener { handleMenuItemLongClicked(menu, item, isLeft) }
 
 			entries.add(MenuButtonEntry(item, view))
 		}
@@ -705,8 +786,7 @@ class ComponentToolbar @JvmOverloads constructor(
 
 	/**
 	 * Reveals the nested `<menu>` of [item] (i.e. `item.subMenu`) as a
-	 * [PopupMenu] anchored to [anchor], triggered by long-pressing an entry
-	 * that declares child items in XML, for example:
+	 * [PopupMenu] anchored to [anchor], for example:
 	 *
 	 * ```xml
 	 * <item android:icon="@drawable/ic_save_24"
@@ -719,16 +799,9 @@ class ComponentToolbar @JvmOverloads constructor(
 	 * </item>
 	 * ```
 	 *
-	 * `menuCategory="secondary"` + `showAsAction="always"` is the
-	 * recommended pattern for this (a persistent, always-visible action
-	 * whose secondary variants sit behind a long-press), but it is not
-	 * enforced: any item with a nested `<menu>` gets this behavior
-	 * regardless of its category or showAsAction value. Both are readable
-	 * through public API on [MenuItem] -[MenuItem.hasSubMenu]/
-	 * [MenuItem.getSubMenu] for the nested menu, [MenuItem.getOrder] masked
-	 * with [Menu.CATEGORY_MASK] for the category (see [isSecondaryCategory])-
-	 * so, unlike [isShowAsActionAlways], none of this needs the
-	 * [MenuItemImpl] fallback.
+	 * Detecting the nested menu goes through public API on [MenuItem]
+	 * ([MenuItem.hasSubMenu]/[MenuItem.getSubMenu]), so unlike
+	 * [isShowAsActionAlways] this does not need the [MenuItemImpl] fallback.
 	 *
 	 * Submenu item clicks are routed through the side's
 	 * [OnItemMenuClickListener] only; they intentionally do not participate
@@ -753,10 +826,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		}
 		popup.show()
 	}
-
-	/** Whether [item] belongs to `android:menuCategory="secondary"`. Read via the public [MenuItem.getOrder] API. */
-	private fun isSecondaryCategory(item: MenuItem): Boolean =
-		(item.order and Menu.CATEGORY_MASK) == Menu.CATEGORY_SECONDARY
 
 	/** Uses the item's icon when present; otherwise falls back to a text button with its title. */
 	private fun createEntryView(item: MenuItem): View {
@@ -899,10 +968,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		return consumed
 	}
 
-	// endregion
-
-	// region AppBarLayout
-	//
 	// Auto-hide/collapse is driven through app:layout_scrollFlags, exactly
 	// the way androidx.appcompat.widget.Toolbar / MaterialToolbar do it: the
 	// AppBarLayout is the one resolving scroll against the CoordinatorLayout,
@@ -930,9 +995,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		}
 	}
 
-	// endregion
-
-	// region Ecosystem · Window insets (edge-to-edge)
 
 	/**
 	 * When `true`, automatically adds top padding equal to the status bar
@@ -953,9 +1015,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		}
 	}
 
-	// endregion
-
-	// region Manual measurement and layout
 
 	override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
 		val widthMode = MeasureSpec.getMode(widthMeasureSpec)
@@ -1117,10 +1176,6 @@ class ComponentToolbar @JvmOverloads constructor(
 	override fun generateLayoutParams(p: LayoutParams?): LayoutParams = MarginLayoutParams(p)
 	override fun checkLayoutParams(p: LayoutParams?): Boolean = p is MarginLayoutParams
 
-	// endregion
-
-	// region XML attributes
-	//
 	// Requires declaring the `ComponentToolbar` styleable (see the attached
 	// `attrs_component_toolbar.xml`) in your module's `res/values/`. The `R`
 	// class referenced here is the one your build generates for your
@@ -1188,10 +1243,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		}
 	}
 
-	// endregion
-
-	// region Default Material 3 styling
-	//
 	// Color/typography roles are read from the ACTIVE THEME -nothing is
 	// hardcoded here- so if the app uses a custom Material 3 theme (with its
 	// own `colorOnSurface`/`colorOnSurfaceVariant`/`textAppearanceTitleLarge`),
@@ -1215,10 +1266,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		applyOverflowButtonTint()
 	}
 
-	// endregion
-
-	// region Ecosystem · Saved state (rotation / process recreation)
-	//
 	// Without this, menu selection and alignment settings would be lost on
 	// every screen rotation -this requires the view to have an `id` (from
 	// XML or `View.generateViewId()`) so Android's standard state-saving
@@ -1280,9 +1327,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		}
 	}
 
-	// endregion
-
-	// region Theme helpers
 
 	private fun dpToPx(dp: Int): Int =
 		TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics).toInt()
@@ -1341,8 +1385,6 @@ class ComponentToolbar @JvmOverloads constructor(
 		val typedValue = TypedValue()
 		return if (context.theme.resolveAttribute(attrId, typedValue, true)) typedValue.resourceId else 0
 	}
-
-	// endregion
 
 	/**
 	 * A hand-drawn three-dot drawable for the overflow button, so it does

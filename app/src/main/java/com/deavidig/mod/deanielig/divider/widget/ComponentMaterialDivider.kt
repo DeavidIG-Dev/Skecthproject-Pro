@@ -1,10 +1,9 @@
-package com.deavidig.mod.deaniel.divider.widget
+package com.deavidig.mod.deanielig.divider.widget
 
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.util.AttributeSet
-import androidx.annotation.ColorInt
 import androidx.core.content.withStyledAttributes
 import com.deavidig.sketchprojectpro.R
 import com.google.android.material.divider.MaterialDivider

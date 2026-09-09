@@ -19,7 +19,7 @@
 		app:layout_constraintStart_toStartOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
 
-	<com.deavidig.mod.deaniel.divider.widget.ComponentMaterialDivider
+	<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
 		android:id="@+id/divider"
 		android:layout_width="1.5dp"
 		android:layout_height="35dp"

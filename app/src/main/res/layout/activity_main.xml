@@ -11,11 +11,14 @@
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content">
 
-		<com.google.android.material.search.SearchBar
+		<com.deavidig.mod.deanielig.search.widget.ComponentSearchBar
 			android:id="@+id/barSearch"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:hint="Type here to Search Project" />
+			android:paddingVertical="12dp"
+			android:hint="Enter project name..."
+			app:title="Type here to Search Project"
+			app:titleTextSize="18dp" />
 
 		<com.google.android.material.tabs.TabLayout
 			android:id="@+id/tabFilter"
@@ -55,11 +58,5 @@
 		android:layout_margin="16dp"
 		android:text="New Project"
 		app:icon="@drawable/ic_add_24" />
-
-	<com.google.android.material.search.SearchView
-		android:id="@+id/search_item"
-		android:layout_width="match_parent"
-		android:layout_height="match_parent"
-		app:layout_anchor="@id/barSearch" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

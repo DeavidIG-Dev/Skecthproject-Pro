@@ -1,4 +1,4 @@
-package com.deavidig.mod.deaniel.navigation.railview.widget
+package com.deavidig.mod.deanielig.navigation.railview.widget
 
 import android.content.Context
 import android.util.AttributeSet

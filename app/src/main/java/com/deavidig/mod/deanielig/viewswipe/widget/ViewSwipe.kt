@@ -1,4 +1,4 @@
-package com.deavidig.mod.deaniel.viewswipe.widget
+package com.deavidig.mod.deanielig.viewswipe.widget
 
 import android.content.Context
 import android.util.AttributeSet

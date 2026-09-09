@@ -8,33 +8,58 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.persistableBundleOf
 import androidx.core.widget.doOnTextChanged
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
-import com.deavidig.mod.deaniel.appcompat.app.applyWindowInsets
+import com.deavidig.mod.deanielig.appcompat.app.ComponentAppCompatActivity
+import com.deavidig.skecth.project.utils.FileUtil
 import com.deavidig.sketchprojectpro.R
 import com.deavidig.sketchprojectpro.databinding.ActivityProjectModulesCreatorBinding
 import com.deavidig.sketchprojectpro.databinding.ActivityProjectModulesCreatorDialogInputBinding
 import com.deavidig.sketchprojectpro.databinding.ActivityProjectModulesCreatorRecyclerviewModuleBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.util.Collections
 
-class ProjectModulesCreatorActivity : AppCompatActivity() {
+class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 	private lateinit var layout_binding: ActivityProjectModulesCreatorBinding
 	private lateinit var input_binding: ActivityProjectModulesCreatorDialogInputBinding
 
 	private lateinit var modulesList: ArrayList<String>
+
+	private val gson = Gson()
 
 	private companion object {
 		private val String.validatePrefix
 			get() = this.matches("[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)*".toRegex())
 	}
 
+	override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+		super.onRestoreInstanceState(savedInstanceState)
+		modulesList = savedInstanceState.getStringArrayList("Modules List") ?: arrayListOf()
+		layout_binding.listName.adapter?.notifyDataSetChanged()
+	}
+
+	override fun onSaveInstanceState(outState: Bundle) {
+		super.onSaveInstanceState(outState)
+		outState.putStringArrayList("Modules List", modulesList)
+	}
+
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 
-		modulesList = intent.getStringArrayListExtra("Prefix Name")!!
+		modulesList = gson.fromJson(
+			FileUtil.readFile(
+				FileUtil.externalStorageDir +
+						FileUtil.separator +
+						"Sketchproject Pro" +
+						FileUtil.separator +
+						"prefix.json"
+			),
+			object : TypeToken<ArrayList<String>>() {}.type
+		)
 
 		layout_binding = ActivityProjectModulesCreatorBinding.inflate(layoutInflater)
 		input_binding = ActivityProjectModulesCreatorDialogInputBinding.inflate(layoutInflater)
@@ -108,12 +133,8 @@ class ProjectModulesCreatorActivity : AppCompatActivity() {
 	}
 
 	override fun onBackPressed() {
-		val resultIntent = intent.apply {
-			putStringArrayListExtra("Modules", modulesList)
-		}
-
-		setResult(RESULT_OK, resultIntent)
-		finish()
+		super.onBackPressed()
+		FileUtil.writeFile(FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json", gson.toJson(modulesList))
 	}
 
 	private class ProjectModulesCreatorRecyclerViewAdapter(private val activity: ProjectModulesCreatorActivity) : RecyclerView.Adapter<ProjectModulesCreatorRecyclerViewAdapter.ProjectModulesCreatorRecyclerViewAdapterModuleHolder>() {
@@ -165,6 +186,7 @@ class ProjectModulesCreatorActivity : AppCompatActivity() {
 						input_binding = ActivityProjectModulesCreatorDialogInputBinding.inflate(layoutInflater)
 					}
 					.setView(input_binding.root, 50, 0, 50, 0)
+					.setCancelable(false)
 					.show()
 			}
 		}

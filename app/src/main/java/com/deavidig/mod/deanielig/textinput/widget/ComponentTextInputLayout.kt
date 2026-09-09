@@ -1,26 +1,28 @@
-package com.deavidig.mod.deaniel.textinput.widget
+package com.deavidig.mod.deanielig.textinput.widget
 
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PixelFormat
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
-import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
-import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.ListView
 import android.widget.PopupWindow
 import androidx.annotation.AttrRes
+import androidx.annotation.ColorInt
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
@@ -29,12 +31,12 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.AccessibilityDelegateCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
-import androidx.core.view.marginEnd
 import androidx.core.widget.doOnTextChanged
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import com.deavidig.sketchprojectpro.R
-import com.deavidig.sketchprojectpro.databinding.ComponentMaterialTextInputLayoutBinding
+import com.deavidig.sketchprojectpro.databinding.ComponentTextInputLayoutBinding
 import com.google.android.material.textview.MaterialTextView
+import kotlin.math.min
 
 /**
  * A text field container inspired by the Material Design 3 **TextField**.
@@ -65,7 +67,7 @@ import com.google.android.material.textview.MaterialTextView
  *
  * ### Basic usage (XML)
  * ```xml
- * <com.deavidig.sketchprojectpro.ComponentMaterialTextInputLayout
+ * <com.deavidig.sketchprojectpro.ComponentTextInputLayout
  *     android:layout_width="match_parent"
  *     android:layout_height="wrap_content"
  *     app:hintEnable="true"
@@ -76,7 +78,7 @@ import com.google.android.material.textview.MaterialTextView
  *     <EditText
  *         android:layout_width="match_parent"
  *         android:layout_height="wrap_content" />
- * </com.deavidig.sketchprojectpro.ComponentMaterialTextInputLayout>
+ * </com.deavidig.sketchprojectpro.ComponentTextInputLayout>
  * ```
  *
  * ### Basic usage (Kotlin)
@@ -96,7 +98,7 @@ import com.google.android.material.textview.MaterialTextView
  * ```
  *
  * @constructor Inflates the private layout and resolves the attributes
- * declared in `R.styleable.ComponentMaterialTextInputLayout`.
+ * declared in `R.styleable.ComponentTextInputLayout`.
  * @param context source context; it is wrapped in a [ContextThemeWrapper]
  *   using the `Theme.MaterialComponents.DayNight` theme so that M3 resources
  *   (error color, etc.) resolve correctly even if the hosting
@@ -105,11 +107,14 @@ import com.google.android.material.textview.MaterialTextView
  *
  * @author DeanielIG, DeavidIG
  */
-class ComponentMaterialTextInputLayout(
+class ComponentTextInputLayout(
 	context: Context,
 	attrs: AttributeSet? = null
 ) : ConstraintLayout(
-	ContextThemeWrapper(context, com.google.android.material.R.style.Theme_MaterialComponents_DayNight),
+	ContextThemeWrapper(
+		context,
+		com.google.android.material.R.style.Theme_MaterialComponents_DayNight
+	),
 	attrs
 ) {
 
@@ -129,6 +134,13 @@ class ComponentMaterialTextInputLayout(
 		const val HINT_TOP_CLEARANCE_DP = 6
 
 		/**
+		 * How long the ghost placeholder takes to fade **in** once the field
+		 * gains focus while empty — the moment it takes over the resting spot
+		 * the hint deliberately leaves inactive (see [updateFloatingHintLabel]).
+		 */
+		const val PLACEHOLDER_APPEAR_FADE_DURATION_MS = 400L
+
+		/**
 		 * How long the ghost placeholder takes to fade out while what's typed
 		 * still matches it — a deliberate, "melting away" pace.
 		 */
@@ -146,48 +158,280 @@ class ComponentMaterialTextInputLayout(
 	}
 
 	/**
-	 * Horizontal alignment of the floating hint label relative to the
-	 * [EditText]'s own bounds. Set via [setHintGravity] / the `hintGravity`
-	 * XML attribute; `START` is the default.
+	 * Defines the horizontal alignment of the floating hint label relative to
+	 * the [EditText]'s bounds.
+	 *
+	 * Set this value using [setHintGravity] or the `hintGravity` XML attribute.
+	 * [START] is used by default.
 	 */
-	enum class HintGravity { START, CENTER, END }
+	enum class HintGravity {
+
+		/** Aligns the floating hint label with the start of the [EditText]. */
+		START,
+
+		/** Centers the floating hint label within the [EditText]. */
+		CENTER,
+
+		/** Aligns the floating hint label with the end of the [EditText]. */
+		END
+	}
 
 	/**
-	 * What the floating hint label's **start** (left, in LTR) edge aligns
-	 * with, when it's told to extend past the [EditText]'s own bounds. Set
-	 * via [setHintStartAnchor] / the `hintStartAnchor` XML attribute;
-	 * unset (`auto`, matching the [EditText]'s own start) is the default.
+	 * Defines the view used as the start anchor for the floating hint label
+	 * when the label extends beyond the [EditText]'s bounds.
+	 *
+	 * Set this value using [setHintStartAnchor] or the `hintStartAnchor` XML
+	 * attribute. When unset (`auto`), the [EditText]'s start is used by default.
 	 */
 	enum class HintStartAnchor {
-		/** Aligns with the start of the leading icon ([viewBinding.imageStart]), covering it and the prefix. */
+
+		/**
+		 * Aligns with the start of the leading icon, covering the icon and
+		 * prefix area.
+		 */
 		START_ICON,
 
-		/** Aligns with the start of the whole leading container ([viewBinding.start]), covering icon and prefix alike. */
+		/**
+		 * Aligns with the start of the leading container, covering both the
+		 * icon and prefix areas.
+		 */
 		START_LAYOUT,
 
-		/** Aligns with the start of the prefix text ([viewBinding.prefix]), covering just the prefix. */
+		/** Aligns with the start of the prefix text. */
 		PREFIX
 	}
 
 	/**
-	 * What the floating hint label's **end** (right, in LTR) edge aligns
-	 * with, when it's told to extend past the [EditText]'s own bounds. Set
-	 * via [setHintEndAnchor] / the `hintEndAnchor` XML attribute; unset
-	 * (`auto`, matching the [EditText]'s own end) is the default.
+	 * Defines the view used as the end anchor for the floating hint label
+	 * when the label extends beyond the [EditText]'s bounds.
+	 *
+	 * Set this value using [setHintEndAnchor] or the `hintEndAnchor` XML
+	 * attribute. When unset (`auto`), the [EditText]'s end is used by default.
 	 */
 	enum class HintEndAnchor {
-		/** Aligns with the end of the trailing icon ([viewBinding.imageEnd]), covering it and the suffix. */
+
+		/**
+		 * Aligns with the end of the trailing icon, covering the icon and
+		 * suffix area.
+		 */
 		END_ICON,
 
-		/** Aligns with the end of the whole trailing container ([viewBinding.end]), covering icon and suffix alike. */
+		/**
+		 * Aligns with the end of the trailing container, covering both the
+		 * icon and suffix areas.
+		 */
 		END_LAYOUT,
 
-		/** Aligns with the end of the suffix text ([viewBinding.suffix]), covering just the suffix. */
+		/** Aligns with the end of the suffix text. */
 		SUFFIX
 	}
 
+	/**
+	 * Defines the layout style used by the button.
+	 */
+	enum class ButtonLayoutStyle {
+
+		/** Displays the button using a three-dot layout. */
+		THREE_DOT,
+
+		/** Displays the button using the normal layout. */
+		NORMAL,
+
+		/** Displays the button using the custom layout. */
+		// CUSTOM
+	}
+
+	/**
+	 * Holds a popup row's [itemView], the same idea as
+	 * `RecyclerView.ViewHolder` — cache child-view lookups once per row
+	 * instead of re-running `findViewById` on every bind. Implemented from
+	 * scratch: this component has no dependency on the RecyclerView library.
+	 *
+	 * Subclass it to expose whatever child views a custom row layout needs:
+	 * ```kotlin
+	 * class CountryHolder(itemView: View) : ComponentTextInputLayout.PopupItemViewHolder(itemView) {
+	 *     val flag: ImageView = itemView.findViewById(R.id.flag)
+	 *     val label: TextView = itemView.findViewById(R.id.label)
+	 * }
+	 * ```
+	 */
+	abstract class PopupItemViewHolder(val itemView: View)
+
+	/**
+	 * Adapter contract for fully customizing how a prefix/suffix dropdown's
+	 * rows are created and populated — modeled on `RecyclerView.Adapter`'s
+	 * create/bind/count split, reimplemented independently (no RecyclerView
+	 * dependency at all; internally it's bridged onto a plain [ListView] by
+	 * [PopupItemAdapterBridge]).
+	 *
+	 * The adapter is expected to hold its own dataset (of *any* type, not
+	 * just [String]) and look it up by `position` itself — [onBindViewHolder]
+	 * doesn't hand you the row's data, exactly like real `RecyclerView.Adapter`.
+	 * The one difference from the real thing: [onBindViewHolder] **returns**
+	 * that row's text value, which the component uses to update the
+	 * prefix/suffix box, accessibility descriptions, and the selection
+	 * listeners — no separate method needed for that.
+	 *
+	 * ```kotlin
+	 * class CountryAdapter(private val countries: List<Country>) :
+	 *     ComponentTextInputLayout.PopupItemAdapter() {
+	 *
+	 *     override fun onCreateViewHolder(inflater: LayoutInflater, parent: ViewGroup): PopupItemViewHolder {
+	 *         val view = inflater.inflate(R.layout.row_country, parent, false)
+	 *         return CountryHolder(view)
+	 *     }
+	 *
+	 *     override fun onBindViewHolder(holder: PopupItemViewHolder, position: Int): String {
+	 *         holder as CountryHolder
+	 *         val country = countries[position]
+	 *         holder.flag.setImageResource(country.flagRes)
+	 *         holder.label.text = country.name
+	 *         return country.dialCode // what shows in the prefix/suffix box once picked
+	 *     }
+	 *
+	 *     override fun getItemCount() = countries.size
+	 *
+	 *     fun addCountry(country: Country) {
+	 *         countries.add(country)
+	 *         notifyDataSetChanged() // refreshes an open popup, and the prefix/suffix box
+	 *     }
+	 * }
+	 *
+	 * textInputLayout.setPrefixItemAdapter(CountryAdapter(countryList))
+	 * ```
+	 *
+	 * Register one via [setPrefixItemAdapter] / [setSuffixItemAdapter] for
+	 * full control over the popup's look. [setPrefixTextList] /
+	 * [setSuffixTextList] remain available as a shortcut that builds a
+	 * plain-text [DefaultPopupItemAdapter] under the hood, for when full
+	 * customization isn't needed.
+	 */
+	abstract class PopupItemAdapter<T : PopupItemViewHolder> {
+		/** Inflates/builds a fresh row's view. Called only as often as new rows are actually needed. */
+		abstract fun onCreateViewHolder(
+			inflater: LayoutInflater,
+			parent: ViewGroup
+		): T
+
+		/**
+		 * Populates [holder] for [position] — look up your own data via
+		 * `position`, exactly like `RecyclerView.Adapter` — and returns that
+		 * row's text value, used for the prefix/suffix box's displayed text,
+		 * accessibility descriptions, and the selection listeners.
+		 */
+		abstract fun onBindViewHolder(holder: T, position: Int): String
+
+		/** Total number of selectable options. */
+		abstract fun getItemCount(): Int
+
+		/** Bridge currently displaying this adapter in an open popup, if any. Set by [showOptionsPopup]. */
+		private var registeredBridge: PopupItemAdapterBridge? = null
+
+		/** Set by [setPrefixItemAdapter] / [setSuffixItemAdapter] so [notifyDataSetChanged] can also refresh the box's displayed text, not just an open popup. */
+		internal var onDataSetChanged: (() -> Unit)? = null
+
+		/**
+		 * Call after the backing dataset changes in any way — matching
+		 * `RecyclerView.Adapter.notifyDataSetChanged()`. Refreshes an open
+		 * popup immediately (if this adapter is currently shown in one) and
+		 * the prefix/suffix box's displayed text right away, without
+		 * needing the popup to be reopened.
+		 */
+		fun notifyDataSetChanged() {
+			registeredBridge?.notifyDataSetChanged()
+			onDataSetChanged?.invoke()
+		}
+
+		/**
+		 * Convenience aliases for [notifyDataSetChanged], matching
+		 * `RecyclerView.Adapter`'s naming for single-item changes. A plain
+		 * [ListView]-backed popup has no notion of partial/animated updates
+		 * the way `RecyclerView` does, so all three just trigger the same
+		 * full refresh — they exist for a familiar, drop-in-compatible API.
+		 */
+		fun notifyItemChanged(position: Int) = notifyDataSetChanged()
+
+		fun notifyItemInserted(position: Int) = notifyDataSetChanged()
+		fun notifyItemRemoved(position: Int) = notifyDataSetChanged()
+
+		internal fun attachBridge(bridge: PopupItemAdapterBridge) {
+			registeredBridge = bridge
+		}
+
+		internal fun detachBridge() {
+			registeredBridge = null
+		}
+	}
+
+	/**
+	 * The plain-text adapter built automatically by [setPrefixTextList] /
+	 * [setSuffixTextList] when no custom [PopupItemAdapter] is supplied —
+	 * a single [MaterialTextView] per row, matching the component's
+	 * original look.
+	 */
+	private inner class DefaultPopupItemAdapter(private val items: List<String>) :
+		PopupItemAdapter<PopupItemViewHolder>() {
+		override fun onCreateViewHolder(
+			inflater: LayoutInflater,
+			parent: ViewGroup
+		): PopupItemViewHolder {
+			val textView = MaterialTextView(context).apply {
+				setPadding(16.dp, 12.dp, 16.dp, 12.dp)
+			}
+			return object : PopupItemViewHolder(textView) {}
+		}
+
+		override fun onBindViewHolder(holder: PopupItemViewHolder, position: Int): String {
+			val item = items[position]
+			(holder.itemView as MaterialTextView).text = item
+			return item
+		}
+
+		override fun getItemCount(): Int = items.size
+	}
+
+	/**
+	 * Bridges a [PopupItemAdapter] onto the platform's [ListView] +
+	 * [android.widget.BaseAdapter] — which is what the popup uses under the
+	 * hood for scrolling/positioning — with basic view-recycling via
+	 * `convertView.tag`, the same idea `RecyclerView` itself uses. This is
+	 * the *only* place that touches [android.widget.BaseAdapter]; the
+	 * developer-facing [PopupItemAdapter] API has no notion of it.
+	 *
+	 * Also caches each row's text value (the [PopupItemAdapter.onBindViewHolder]
+	 * return) as it's bound, so [showOptionsPopup] can read back what was
+	 * shown for a tapped position without binding it a second time.
+	 * `notifyDataSetChanged()` is inherited directly from [android.widget.BaseAdapter]
+	 * — it's what actually makes an open [ListView] re-query and re-render.
+	 */
+	internal class PopupItemAdapterBridge(
+		private val inflater: LayoutInflater,
+		private val adapter: PopupItemAdapter<PopupItemViewHolder>
+	) : android.widget.BaseAdapter() {
+		private val labelCache = HashMap<Int, String>()
+
+		override fun getCount(): Int = adapter.getItemCount()
+		override fun getItem(position: Int): String? = labelCache[position]
+		override fun getItemId(position: Int): Long = position.toLong()
+
+		override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+			val holder = (convertView?.tag as? PopupItemViewHolder)
+				?: adapter.onCreateViewHolder(inflater, parent).also { it.itemView.tag = it }
+			labelCache[position] = adapter.onBindViewHolder(holder, position)
+			return holder.itemView
+		}
+
+		/** The text value bound for [position], if that row has been rendered at least once. */
+		fun labelAt(position: Int): String? = labelCache[position]
+
+		override fun notifyDataSetChanged() {
+			labelCache.clear()
+			super.notifyDataSetChanged()
+		}
+	}
+
 	/** Binding for the private layout (container, prefix/suffix, icons, counter, etc.). */
-	private val viewBinding: ComponentMaterialTextInputLayoutBinding
+	private val view_binding: ComponentTextInputLayoutBinding
 
 	/** `true` while the binding is being inflated, so the private `addView` call isn't intercepted. */
 	private var inflating: Boolean = true
@@ -203,12 +447,22 @@ class ComponentMaterialTextInputLayout(
 	private var mPrefixText: String? = null
 	private var mPrefixEnable: Boolean = false
 	private var mPrefixTextColor: ColorStateList? = null
-	private var mPrefixTextList: List<String> = emptyList()
+
+	/**
+	 * Backing field for the prefix dropdown's data + row rendering. `null`
+	 * means "no dropdown, [mPrefixText] is shown as plain static text".
+	 * Built automatically by [setPrefixTextList] (as a [DefaultPopupItemAdapter]),
+	 * or supplied directly via [setPrefixItemAdapter] for full control over
+	 * how each row looks.
+	 */
+	private var mPrefixItemAdapter: PopupItemAdapter<PopupItemViewHolder>? = null
 
 	private var mSuffixText: String? = null
 	private var mSuffixEnable: Boolean = false
 	private var mSuffixTextColor: ColorStateList? = null
-	private var mSuffixTextList: List<String> = emptyList()
+
+	/** Same idea as [mPrefixItemAdapter], for the suffix dropdown. */
+	private var mSuffixItemAdapter: PopupItemAdapter<PopupItemViewHolder>? = null
 
 	private var mHintText: String? = null
 	private var mHintEnable: Boolean = false
@@ -236,6 +490,9 @@ class ComponentMaterialTextInputLayout(
 	 * visually stretch over the suffix and/or the trailing icon.
 	 */
 	private var mHintEndAnchor: HintEndAnchor? = null
+
+	private var mStartButtonLayoutStyle: ButtonLayoutStyle = ButtonLayoutStyle.NORMAL
+	private var mEndButtonLayoutStyle: ButtonLayoutStyle = ButtonLayoutStyle.NORMAL
 
 	/**
 	 * Backing field for the floating label rendered above the [EditText]
@@ -391,111 +648,202 @@ class ComponentMaterialTextInputLayout(
 	}
 
 	init {
-		viewBinding = ComponentMaterialTextInputLayoutBinding.inflate(LayoutInflater.from(context), this, true)
+		view_binding = ComponentTextInputLayoutBinding.inflate(
+			LayoutInflater.from(context),
+			this,
+			true
+		)
 		inflating = false
 
-		context.withStyledAttributes(attrs, R.styleable.ComponentMaterialTextInputLayout) {
+		context.withStyledAttributes(attrs, R.styleable.ComponentTextInputLayout) {
 
-			mPrefixText = getString(R.styleable.ComponentMaterialTextInputLayout_prefixText)
-			mPrefixEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_prefixEnable, false)
-			mPrefixTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_prefixTextColor) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
+			mPrefixText = getString(R.styleable.ComponentTextInputLayout_prefixText)
+			mPrefixEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_prefixEnable, false)
+			mPrefixTextColor =
+				getColorStateList(R.styleable.ComponentTextInputLayout_prefixTextColor)
+					?: run {
+						val typedValue = TypedValue()
+						context.theme.resolveAttribute(
+							android.R.attr.textColorPrimary,
+							typedValue,
+							true
+						)
+						context.getColorStateList(typedValue.resourceId)
+							.takeIf { typedValue.resourceId != 0 }
+							?: ColorStateList.valueOf(context.getColor(typedValue.data))
+					}
 
-			mPlaceholderText = getString(R.styleable.ComponentMaterialTextInputLayout_placeholderText)
-			mPlaceholderEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_placeholderEnable, false)
-			mPlaceholderTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_placeholderTextColor)
+			mPlaceholderText =
+				getString(R.styleable.ComponentTextInputLayout_placeholderText)
+			mPlaceholderEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_placeholderEnable, false)
+			mPlaceholderTextColor =
+				getColorStateList(R.styleable.ComponentTextInputLayout_placeholderTextColor)
 
-			mHeaderText = getString(R.styleable.ComponentMaterialTextInputLayout_headerText)
-			mHeaderEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_headerEnable, false)
-			mHeaderTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_headerTextColor) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
-			mHeaderTextSize = getDimension(R.styleable.ComponentMaterialTextInputLayout_headerTextSize, 24.dp.toFloat())
+			mHeaderText = getString(R.styleable.ComponentTextInputLayout_headerText)
+			mHeaderEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_headerEnable, false)
+			mHeaderTextColor =
+				getColorStateList(R.styleable.ComponentTextInputLayout_headerTextColor)
+					?: run {
+						val typedValue = TypedValue()
+						context.theme.resolveAttribute(
+							android.R.attr.textColorPrimary,
+							typedValue,
+							true
+						)
+						context.getColorStateList(typedValue.resourceId)
+							.takeIf { typedValue.resourceId != 0 }
+							?: ColorStateList.valueOf(context.getColor(typedValue.data))
+					}
+			mHeaderTextSize = getDimension(
+				R.styleable.ComponentTextInputLayout_headerTextSize,
+				24.dp.toFloat()
+			)
 
-			mCounterEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_counterEnable, false)
-			mOutLimitTextLimit = getBoolean(R.styleable.ComponentMaterialTextInputLayout_counterLimit, false)
-			mCounterTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_counterTextColor) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
-			mMaxLimit = getInteger(R.styleable.ComponentMaterialTextInputLayout_counterMaxLength, -1)
+			mCounterEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_counterEnable, false)
+			mOutLimitTextLimit =
+				getBoolean(R.styleable.ComponentTextInputLayout_counterLimit, false)
+			mCounterTextColor =
+				getColorStateList(R.styleable.ComponentTextInputLayout_counterTextColor)
+					?: run {
+						val typedValue = TypedValue()
+						context.theme.resolveAttribute(
+							android.R.attr.textColorPrimary,
+							typedValue,
+							true
+						)
+						context.getColorStateList(typedValue.resourceId)
+							.takeIf { typedValue.resourceId != 0 }
+							?: ColorStateList.valueOf(context.getColor(typedValue.data))
+					}
+			mMaxLimit =
+				getInteger(R.styleable.ComponentTextInputLayout_counterMaxLength, -1)
 
-			mHelperText = getString(R.styleable.ComponentMaterialTextInputLayout_helperText)
-			mHelperEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_helperEnable, false)
-			mHelperTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_helperTextColor) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
+			mHelperText = getString(R.styleable.ComponentTextInputLayout_helperText)
+			mHelperEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_helperEnable, false)
+			mHelperTextColor =
+				getColorStateList(R.styleable.ComponentTextInputLayout_helperTextColor)
+					?: run {
+						val typedValue = TypedValue()
+						context.theme.resolveAttribute(
+							android.R.attr.textColorPrimary,
+							typedValue,
+							true
+						)
+						context.getColorStateList(typedValue.resourceId)
+							.takeIf { typedValue.resourceId != 0 }
+							?: ColorStateList.valueOf(context.getColor(typedValue.data))
+					}
 
-			mStartIconEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_startIconEnable, false)
-			mStartIcon = getDrawable(R.styleable.ComponentMaterialTextInputLayout_startIconDrawable)
-			mStartIconTint = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_startIconTint) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(com.google.android.material.R.attr.colorOutline, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
-			mStartLayoutEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_startLayoutEnable, false)
+			mStartIconEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_startIconEnable, false)
+			mStartIcon = getDrawable(R.styleable.ComponentTextInputLayout_startIconDrawable)
+			mStartIconTint =
+				getColorStateList(R.styleable.ComponentTextInputLayout_startIconTint)
+					?: run {
+						val typedValue = TypedValue()
+						context.theme.resolveAttribute(
+							com.google.android.material.R.attr.colorOutline,
+							typedValue,
+							true
+						)
+						context.getColorStateList(typedValue.resourceId)
+							.takeIf { typedValue.resourceId != 0 }
+							?: ColorStateList.valueOf(context.getColor(typedValue.data))
+					}
+			mStartLayoutEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_startLayoutEnable, false)
+			mStartButtonLayoutStyle =
+				when (getInt(R.styleable.ComponentTextInputLayout_startLayoutStyle, 1)) {
+					0 -> ButtonLayoutStyle.THREE_DOT
+					else -> ButtonLayoutStyle.NORMAL
+				}
 
-			mEndIconEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_endIconEnable, false)
-			mEndIcon = getDrawable(R.styleable.ComponentMaterialTextInputLayout_endIconDrawable)
-			mEndIconTint = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_endIconTint) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(com.google.android.material.R.attr.colorOutline, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
-			mEndLayoutEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_endLayoutEnable, false)
+			mEndIconEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_endIconEnable, false)
+			mEndIcon = getDrawable(R.styleable.ComponentTextInputLayout_endIconDrawable)
+			mEndIconTint =
+				getColorStateList(R.styleable.ComponentTextInputLayout_endIconTint) ?: run {
+					val typedValue = TypedValue()
+					context.theme.resolveAttribute(
+						com.google.android.material.R.attr.colorOutline,
+						typedValue,
+						true
+					)
+					context.getColorStateList(typedValue.resourceId)
+						.takeIf { typedValue.resourceId != 0 }
+						?: ColorStateList.valueOf(context.getColor(typedValue.data))
+				}
+			mEndLayoutEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_endLayoutEnable, false)
+			mEndButtonLayoutStyle =
+				when (getInt(R.styleable.ComponentTextInputLayout_endLayoutStyle, 1)) {
+					0 -> ButtonLayoutStyle.THREE_DOT
+					else -> ButtonLayoutStyle.NORMAL
+				}
 
-			mSuffixText = getString(R.styleable.ComponentMaterialTextInputLayout_suffixText)
-			mSuffixEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_suffixEnable, false)
-			mSuffixTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_suffixTextColor) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
+			mSuffixText = getString(R.styleable.ComponentTextInputLayout_suffixText)
+			mSuffixEnable =
+				getBoolean(R.styleable.ComponentTextInputLayout_suffixEnable, false)
+			mSuffixTextColor =
+				getColorStateList(R.styleable.ComponentTextInputLayout_suffixTextColor)
+					?: run {
+						val typedValue = TypedValue()
+						context.theme.resolveAttribute(
+							android.R.attr.textColorPrimary,
+							typedValue,
+							true
+						)
+						context.getColorStateList(typedValue.resourceId)
+							.takeIf { typedValue.resourceId != 0 }
+							?: ColorStateList.valueOf(context.getColor(typedValue.data))
+					}
 
-			mHintText = getString(R.styleable.ComponentMaterialTextInputLayout_hintText)
-			mHintEnable = getBoolean(R.styleable.ComponentMaterialTextInputLayout_hintEnable, false)
-			mHintTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_hintTextColor) ?: run {
-				val typedValue = TypedValue()
-				context.theme.resolveAttribute(com.google.android.material.R.attr.colorOutline, typedValue, true)
-				context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
-					?: ColorStateList.valueOf(context.getColor(typedValue.data))
-			}
-			mHintGravity = when (getInt(R.styleable.ComponentMaterialTextInputLayout_hintGravity, 0)) {
-				1 -> HintGravity.CENTER
-				2 -> HintGravity.END
-				else -> HintGravity.START
-			}
+			mHintText = getString(R.styleable.ComponentTextInputLayout_hintText)
+			mHintEnable = getBoolean(R.styleable.ComponentTextInputLayout_hintEnable, false)
+			mHintTextColor =
+				getColorStateList(R.styleable.ComponentTextInputLayout_hintTextColor)
+					?: run {
+						val typedValue = TypedValue()
+						context.theme.resolveAttribute(
+							com.google.android.material.R.attr.colorOutline,
+							typedValue,
+							true
+						)
+						context.getColorStateList(typedValue.resourceId)
+							.takeIf { typedValue.resourceId != 0 }
+							?: ColorStateList.valueOf(context.getColor(typedValue.data))
+					}
+			mHintGravity =
+				when (getInt(R.styleable.ComponentTextInputLayout_hintGravity, 0)) {
+					1 -> HintGravity.CENTER
+					2 -> HintGravity.END
+					else -> HintGravity.START
+				}
 
-			mHintStartAnchor = when (getInt(R.styleable.ComponentMaterialTextInputLayout_hintStartAnchor, 0)) {
-				1 -> HintStartAnchor.START_ICON
-				2 -> HintStartAnchor.START_LAYOUT
-				3 -> HintStartAnchor.PREFIX
-				else -> if (mPrefixEnable) HintStartAnchor.PREFIX else if (mStartIconEnable) HintStartAnchor.START_ICON else HintStartAnchor.START_LAYOUT
-			}
-			mHintEndAnchor = when (getInt(R.styleable.ComponentMaterialTextInputLayout_hintEndAnchor, 0)) {
-				1 -> HintEndAnchor.END_ICON
-				2 -> HintEndAnchor.END_LAYOUT
-				3 -> HintEndAnchor.SUFFIX
-				else -> if (mSuffixEnable) HintEndAnchor.SUFFIX else if (mEndIconEnable) HintEndAnchor.END_ICON else HintEndAnchor.END_LAYOUT
-			}
+			mHintStartAnchor =
+				when (getInt(R.styleable.ComponentTextInputLayout_hintStartAnchor, 0)) {
+					1 -> HintStartAnchor.START_ICON
+					2 -> HintStartAnchor.START_LAYOUT
+					3 -> HintStartAnchor.PREFIX
+					else -> if (mPrefixEnable) HintStartAnchor.PREFIX else if (mStartIconEnable) HintStartAnchor.START_ICON else HintStartAnchor.START_LAYOUT
+				}
+			mHintEndAnchor =
+				when (getInt(R.styleable.ComponentTextInputLayout_hintEndAnchor, 0)) {
+					1 -> HintEndAnchor.END_ICON
+					2 -> HintEndAnchor.END_LAYOUT
+					3 -> HintEndAnchor.SUFFIX
+					else -> if (mSuffixEnable) HintEndAnchor.SUFFIX else if (mEndIconEnable) HintEndAnchor.END_ICON else HintEndAnchor.END_LAYOUT
+				}
 
-			mErrorText = getString(R.styleable.ComponentMaterialTextInputLayout_errorText) ?: ""
-			mErrorTextColor = getColorStateList(R.styleable.ComponentMaterialTextInputLayout_errorTextColor) ?: ColorStateList.valueOf(Color.RED)
+			mErrorText = getString(R.styleable.ComponentTextInputLayout_errorText) ?: ""
+			mErrorTextColor =
+				getColorStateList(R.styleable.ComponentTextInputLayout_errorTextColor)
+					?: ColorStateList.valueOf(Color.RED)
 		}
 
 		// Apply every module once, independently. None of these depend on
@@ -518,12 +866,12 @@ class ComponentMaterialTextInputLayout(
 
 		// TalkBack announces the helper/error text automatically whenever it
 		// changes, without needing an explicit accessibility event per toggle.
-		viewBinding.message.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+		view_binding.message.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
 
 		// Fixes the header/message row getting an unwanted symmetric gap
 		// (see normalizeVerticalTextLayout's KDoc for why).
-		normalizeVerticalTextLayout(viewBinding.header)
-		normalizeVerticalTextLayout(viewBinding.message)
+		normalizeVerticalTextLayout(view_binding.header)
+		normalizeVerticalTextLayout(view_binding.message)
 	}
 
 	/**
@@ -560,8 +908,13 @@ class ComponentMaterialTextInputLayout(
 	}
 
 	/** Converts `dp` to pixels using the current device density. */
-	private val Int.dp: Int get(): Int =
-		TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this.toFloat(), resources.displayMetrics).toInt()
+	private val Int.dp: Int
+		get(): Int =
+			TypedValue.applyDimension(
+				TypedValue.COMPLEX_UNIT_DIP,
+				this.toFloat(),
+				resources.displayMetrics
+			).toInt()
 
 	/**
 	 * Resolves a theme attribute (e.g. `colorPrimary`) into a [ColorStateList],
@@ -573,7 +926,8 @@ class ComponentMaterialTextInputLayout(
 	private fun resolveThemeColorStateList(@AttrRes attrId: Int): ColorStateList {
 		val typedValue = TypedValue()
 		context.theme.resolveAttribute(attrId, typedValue, true)
-		return context.getColorStateList(typedValue.resourceId).takeIf { typedValue.resourceId != 0 }
+		return context.getColorStateList(typedValue.resourceId)
+			.takeIf { typedValue.resourceId != 0 }
 			?: ColorStateList.valueOf(context.getColor(typedValue.data))
 	}
 
@@ -627,7 +981,13 @@ class ComponentMaterialTextInputLayout(
 
 	/** Sets the header text size in `sp`, converting it to pixels using the current display metrics. */
 	fun setHeaderTextSizeSp(sizeSp: Float) {
-		setHeaderTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sizeSp, resources.displayMetrics))
+		setHeaderTextSize(
+			TypedValue.applyDimension(
+				TypedValue.COMPLEX_UNIT_SP,
+				sizeSp,
+				resources.displayMetrics
+			)
+		)
 	}
 
 	/** Returns the header text size, in pixels. */
@@ -641,7 +1001,7 @@ class ComponentMaterialTextInputLayout(
 	 * by headings, the same way it would for a section title.
 	 */
 	private fun applyHeader() {
-		val header = viewBinding.header
+		val header = view_binding.header
 		header.text = mHeaderText
 		mHeaderTextColor?.let { header.setTextColor(it) }
 		if (mHeaderTextSize > 0f) header.setTextSize(TypedValue.COMPLEX_UNIT_PX, mHeaderTextSize)
@@ -650,19 +1010,20 @@ class ComponentMaterialTextInputLayout(
 	}
 
 	/**
-	 * Sets the static prefix text, shown when [getPrefixTextList] has 0 or 1 entries.
+	 * Sets the static prefix text, shown when there's no active dropdown
+	 * (see [getPrefixItemAdapter]).
 	 *
-	 * @throws IllegalStateException if a prefix text list with one or more
-	 *   options is currently active (set via [setPrefixTextList]). A static
-	 *   text and a dropdown list are mutually exclusive: call
-	 *   `setPrefixTextList()` with no arguments, or [clearPrefixSelection],
-	 *   before setting a static value.
+	 * @throws IllegalStateException if a prefix dropdown is currently active
+	 *   (set via [setPrefixTextList] or [setPrefixItemAdapter]). A static
+	 *   text and a dropdown are mutually exclusive: call `setPrefixTextList()`
+	 *   with no arguments, or `setPrefixItemAdapter(null)`, before setting a
+	 *   static value.
 	 */
 	fun setPrefixText(text: String?) {
-		check(mPrefixTextList.isEmpty()) {
-			"Cannot call setPrefixText() while a prefix text list is active " +
-					"(${mPrefixTextList.size} option(s) set via setPrefixTextList()). " +
-					"Call setPrefixTextList() with no arguments to clear it first."
+		check(mPrefixItemAdapter == null) {
+			"Cannot call setPrefixText() while a prefix dropdown is active " +
+					"(set via setPrefixTextList() or setPrefixItemAdapter()). " +
+					"Call setPrefixTextList() with no arguments, or setPrefixItemAdapter(null), to clear it first."
 		}
 		mPrefixText = text
 		applyPrefix()
@@ -691,30 +1052,64 @@ class ComponentMaterialTextInputLayout(
 
 	/**
 	 * Sets a list of selectable **prefix** options shown as a popup menu
-	 * (e.g. country codes). The first entry is displayed by default; tapping
-	 * the prefix opens the popup when there's more than one option.
+	 * (e.g. country codes), rendered as plain text rows via a
+	 * [DefaultPopupItemAdapter]. The first entry is displayed by default;
+	 * tapping the prefix opens the popup when there's more than one option.
+	 * For custom row layouts, use [setPrefixItemAdapter] instead.
 	 *
-	 * @param texts options to show, in order.
+	 * @param texts options to show, in order. Passing none clears the dropdown.
 	 */
 	fun setPrefixTextList(vararg texts: String) {
-		mPrefixTextList = texts.toList()
-		applyPrefix()
+		setPrefixTextList(texts.toList())
 	}
 
 	/**
 	 * Sets a list of selectable **prefix** options shown as a popup menu
-	 * (e.g. country codes). The first entry is displayed by default; tapping
-	 * the prefix opens the popup when there's more than one option.
+	 * (e.g. country codes), rendered as plain text rows via a
+	 * [DefaultPopupItemAdapter]. The first entry is displayed by default;
+	 * tapping the prefix opens the popup when there's more than one option.
+	 * For custom row layouts, use [setPrefixItemAdapter] instead.
 	 *
-	 * @param texts options to show, in order.
+	 * @param texts options to show, in order. Passing an empty list clears the dropdown.
 	 */
 	fun setPrefixTextList(texts: List<String>) {
-		mPrefixTextList = texts
+		attachPrefixAdapter(if (texts.isNotEmpty()) DefaultPopupItemAdapter(texts) else null)
+	}
+
+	/**
+	 * Returns the current list of selectable prefix options, read back from
+	 * [getPrefixItemAdapter] by binding each row once (see [labelForPosition]).
+	 */
+	fun getPrefixTextList(): List<String> {
+		val adapter = mPrefixItemAdapter ?: return emptyList()
+		return (0 until adapter.getItemCount()).mapNotNull { labelForPosition(adapter, it) }
+	}
+
+	/**
+	 * Sets a fully custom [PopupItemAdapter] for the prefix dropdown,
+	 * replacing whatever [setPrefixTextList] would have built — use this
+	 * when the popup's rows need more than plain text (icons, multi-line
+	 * layouts, custom typography, etc). Pass `null` to clear the dropdown
+	 * entirely, same as calling `setPrefixTextList()` with no arguments.
+	 */
+	fun setPrefixItemAdapter(adapter: PopupItemAdapter<PopupItemViewHolder>?) {
+		attachPrefixAdapter(adapter)
+	}
+
+	/**
+	 * Assigns [adapter] as the prefix dropdown's data source and wires
+	 * [PopupItemAdapter.notifyDataSetChanged] back to [applyPrefix], so
+	 * calling it later refreshes the prefix box's displayed text too — not
+	 * just an open popup.
+	 */
+	private fun attachPrefixAdapter(adapter: PopupItemAdapter<PopupItemViewHolder>?) {
+		mPrefixItemAdapter = adapter
+		adapter?.onDataSetChanged = { applyPrefix() }
 		applyPrefix()
 	}
 
-	/** Returns the current list of selectable prefix options. */
-	fun getPrefixTextList(): List<String> = mPrefixTextList
+	/** Returns the prefix dropdown's current adapter, or `null` if none is active. */
+	fun getPrefixItemAdapter(): PopupItemAdapter<PopupItemViewHolder>? = mPrefixItemAdapter
 
 	/**
 	 * Registers a listener for the full select/reselect/unselect lifecycle
@@ -739,14 +1134,29 @@ class ComponentMaterialTextInputLayout(
 	 * with that option.
 	 *
 	 * This only clears the *selected value* — the dropdown options set via
-	 * [setPrefixTextList] are left untouched, so the popup still offers the
-	 * same choices next time it's opened.
+	 * [setPrefixTextList] / [setPrefixItemAdapter] are left untouched, so
+	 * the popup still offers the same choices next time it's opened.
 	 */
 	fun clearPrefixSelection() {
 		val previous = mPrefixText
 		mPrefixText = null
 		applyPrefix()
 		if (previous != null) mPrefixItemActionListener?.onItemUnselected(previous)
+	}
+
+	/**
+	 * Resolves the text value [adapter] would show for [position], by
+	 * binding a throwaway [PopupItemViewHolder] and reading
+	 * [PopupItemAdapter.onBindViewHolder]'s return value — used to display
+	 * the current selection in the prefix/suffix box *without* needing the
+	 * popup itself to be open. A one-off `View` allocation, only run when
+	 * the prefix/suffix or its adapter actually changes (never per-frame).
+	 */
+	private fun labelForPosition(adapter: PopupItemAdapter<PopupItemViewHolder>, position: Int): String? {
+		if (position !in 0 until adapter.getItemCount()) return null
+		val holder =
+			adapter.onCreateViewHolder(LayoutInflater.from(context), view_binding.container)
+		return adapter.onBindViewHolder(holder, position)
 	}
 
 	/**
@@ -760,21 +1170,24 @@ class ComponentMaterialTextInputLayout(
 	 * announced automatically.
 	 */
 	private fun applyPrefix() {
-		val textView = viewBinding.prefix
-		val options = mPrefixTextList
-		val current = if (options.isNotEmpty()) options[0] else mPrefixText
+		val textView = view_binding.prefix
+		val adapter = mPrefixItemAdapter
+		val current = if (adapter != null && adapter.getItemCount() > 0) labelForPosition(
+			adapter,
+			0
+		) else mPrefixText
 
 		textView.text = current?.truncate(11)
 		mPrefixTextColor?.let { textView.setTextColor(it) }
 		textView.visibility = if (mPrefixEnable) VISIBLE else GONE
 
-		if (options.size > 1) {
+		if (adapter != null && adapter.getItemCount() > 1) {
 			textView.contentDescription = "Prefix"
 			textView.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
 			ViewCompat.setStateDescription(textView, current)
 
 			textView.setOnClickListener {
-				showOptionsPopup(textView, options) { selected ->
+				showOptionsPopup(textView, adapter) { selected ->
 					val previous = mPrefixText
 					textView.text = selected.truncate(11)
 					mPrefixText = selected
@@ -784,7 +1197,10 @@ class ComponentMaterialTextInputLayout(
 						mPrefixItemActionListener?.onItemReselected(selected)
 					} else {
 						mPrefixItemActionListener?.onItemSelected(selected)
-						if (previous != null) mPrefixItemClickChangedListener?.onItemClickChanged(previous, selected)
+						if (previous != null) mPrefixItemClickChangedListener?.onItemClickChanged(
+							previous,
+							selected
+						)
 					}
 				}
 			}
@@ -798,19 +1214,20 @@ class ComponentMaterialTextInputLayout(
 	}
 
 	/**
-	 * Sets the static suffix text, shown when [getSuffixTextList] has 0 or 1 entries.
+	 * Sets the static suffix text, shown when there's no active dropdown
+	 * (see [getSuffixItemAdapter]).
 	 *
-	 * @throws IllegalStateException if a suffix text list with one or more
-	 *   options is currently active (set via [setSuffixTextList]). A static
-	 *   text and a dropdown list are mutually exclusive: call
-	 *   `setSuffixTextList()` with no arguments, or [clearSuffixSelection],
-	 *   before setting a static value.
+	 * @throws IllegalStateException if a suffix dropdown is currently active
+	 *   (set via [setSuffixTextList] or [setSuffixItemAdapter]). A static
+	 *   text and a dropdown are mutually exclusive: call `setSuffixTextList()`
+	 *   with no arguments, or `setSuffixItemAdapter(null)`, before setting a
+	 *   static value.
 	 */
 	fun setSuffixText(text: String?) {
-		check(mSuffixTextList.isEmpty()) {
-			"Cannot call setSuffixText() while a suffix text list is active " +
-					"(${mSuffixTextList.size} option(s) set via setSuffixTextList()). " +
-					"Call setSuffixTextList() with no arguments to clear it first."
+		check(mSuffixItemAdapter == null) {
+			"Cannot call setSuffixText() while a suffix dropdown is active " +
+					"(set via setSuffixTextList() or setSuffixItemAdapter()). " +
+					"Call setSuffixTextList() with no arguments, or setSuffixItemAdapter(null), to clear it first."
 		}
 		mSuffixText = text
 		applySuffix()
@@ -839,30 +1256,64 @@ class ComponentMaterialTextInputLayout(
 
 	/**
 	 * Sets a list of selectable **suffix** options shown as a popup menu
-	 * (e.g. units of measurement). The first entry is displayed by default;
+	 * (e.g. units of measurement), rendered as plain text rows via a
+	 * [DefaultPopupItemAdapter]. The first entry is displayed by default;
 	 * tapping the suffix opens the popup when there's more than one option.
+	 * For custom row layouts, use [setSuffixItemAdapter] instead.
 	 *
-	 * @param texts options to show, in order.
+	 * @param texts options to show, in order. Passing none clears the dropdown.
 	 */
 	fun setSuffixTextList(vararg texts: String) {
-		mSuffixTextList = texts.toList()
-		applySuffix()
+		setSuffixTextList(texts.toList())
 	}
 
 	/**
 	 * Sets a list of selectable **suffix** options shown as a popup menu
-	 * (e.g. units of measurement). The first entry is displayed by default;
+	 * (e.g. units of measurement), rendered as plain text rows via a
+	 * [DefaultPopupItemAdapter]. The first entry is displayed by default;
 	 * tapping the suffix opens the popup when there's more than one option.
+	 * For custom row layouts, use [setSuffixItemAdapter] instead.
 	 *
-	 * @param texts options to show, in order.
+	 * @param texts options to show, in order. Passing an empty list clears the dropdown.
 	 */
 	fun setSuffixTextList(texts: List<String>) {
-		mSuffixTextList = texts
+		attachSuffixAdapter(if (texts.isNotEmpty()) DefaultPopupItemAdapter(texts) else null)
+	}
+
+	/**
+	 * Returns the current list of selectable suffix options, read back from
+	 * [getSuffixItemAdapter] by binding each row once (see [labelForPosition]).
+	 */
+	fun getSuffixTextList(): List<String> {
+		val adapter = mSuffixItemAdapter ?: return emptyList()
+		return (0 until adapter.getItemCount()).mapNotNull { labelForPosition(adapter, it) }
+	}
+
+	/**
+	 * Sets a fully custom [PopupItemAdapter] for the suffix dropdown,
+	 * replacing whatever [setSuffixTextList] would have built — use this
+	 * when the popup's rows need more than plain text (icons, multi-line
+	 * layouts, custom typography, etc). Pass `null` to clear the dropdown
+	 * entirely, same as calling `setSuffixTextList()` with no arguments.
+	 */
+	fun setSuffixItemAdapter(adapter: PopupItemAdapter<PopupItemViewHolder>?) {
+		attachSuffixAdapter(adapter)
+	}
+
+	/**
+	 * Assigns [adapter] as the suffix dropdown's data source and wires
+	 * [PopupItemAdapter.notifyDataSetChanged] back to [applySuffix], so
+	 * calling it later refreshes the suffix box's displayed text too — not
+	 * just an open popup.
+	 */
+	private fun attachSuffixAdapter(adapter: PopupItemAdapter<PopupItemViewHolder>?) {
+		mSuffixItemAdapter = adapter
+		adapter?.onDataSetChanged = { applySuffix() }
 		applySuffix()
 	}
 
-	/** Returns the current list of selectable suffix options. */
-	fun getSuffixTextList(): List<String> = mSuffixTextList
+	/** Returns the suffix dropdown's current adapter, or `null` if none is active. */
+	fun getSuffixItemAdapter(): PopupItemAdapter<PopupItemViewHolder>? = mSuffixItemAdapter
 
 	/**
 	 * Registers a listener for the full select/reselect/unselect lifecycle
@@ -887,8 +1338,8 @@ class ComponentMaterialTextInputLayout(
 	 * with that option.
 	 *
 	 * This only clears the *selected value* — the dropdown options set via
-	 * [setSuffixTextList] are left untouched, so the popup still offers the
-	 * same choices next time it's opened.
+	 * [setSuffixTextList] / [setSuffixItemAdapter] are left untouched, so
+	 * the popup still offers the same choices next time it's opened.
 	 */
 	fun clearSuffixSelection() {
 		val previous = mSuffixText
@@ -905,21 +1356,24 @@ class ComponentMaterialTextInputLayout(
 	 * a polite live region while the dropdown is active.
 	 */
 	private fun applySuffix() {
-		val textView = viewBinding.suffix
-		val options = mSuffixTextList
-		val current = if (options.isNotEmpty()) options[0] else mSuffixText
+		val textView = view_binding.suffix
+		val adapter = mSuffixItemAdapter
+		val current = if (adapter != null && adapter.getItemCount() > 0) labelForPosition(
+			adapter,
+			0
+		) else mSuffixText
 
 		textView.text = current?.truncate(11)
 		mSuffixTextColor?.let { textView.setTextColor(it) }
 		textView.visibility = if (mSuffixEnable) VISIBLE else GONE
 
-		if (options.size > 1) {
+		if (adapter != null && adapter.getItemCount() > 1) {
 			textView.contentDescription = "Suffix"
 			textView.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
 			ViewCompat.setStateDescription(textView, current)
 
 			textView.setOnClickListener {
-				showOptionsPopup(textView, options) { selected ->
+				showOptionsPopup(textView, adapter) { selected ->
 					val previous = mSuffixText
 					textView.text = selected.truncate(11)
 					mSuffixText = selected
@@ -929,7 +1383,10 @@ class ComponentMaterialTextInputLayout(
 						mSuffixItemActionListener?.onItemReselected(selected)
 					} else {
 						mSuffixItemActionListener?.onItemSelected(selected)
-						if (previous != null) mSuffixItemClickChangedListener?.onItemClickChanged(previous, selected)
+						if (previous != null) mSuffixItemClickChangedListener?.onItemClickChanged(
+							previous,
+							selected
+						)
 					}
 				}
 			}
@@ -944,17 +1401,32 @@ class ComponentMaterialTextInputLayout(
 
 	/**
 	 * Shared popup-menu implementation used by both [applyPrefix] and
-	 * [applySuffix] so the dropdown behavior lives in a single place.
+	 * [applySuffix] so the dropdown behavior lives in a single place. The
+	 * actual row views come from [adapter] via [PopupItemAdapterBridge] —
+	 * this function only owns the [PopupWindow]/[ListView] plumbing
+	 * (positioning, sizing, dismiss-on-select), never the row's look.
+	 *
+	 * The adapter is attached to its bridge for the popup's lifetime, so
+	 * [PopupItemAdapter.notifyDataSetChanged] reaches the live [ListView]
+	 * while it's open, and detached again on dismiss.
 	 *
 	 * @param anchor view the popup is anchored to.
-	 * @param options entries shown in the popup.
-	 * @param onSelected called with the chosen entry once the user taps it.
+	 * @param adapter supplies the row count, row views, and (via
+	 *   [PopupItemAdapter.onBindViewHolder]'s return value) each row's text.
+	 * @param onSelected called with the tapped row's text value.
 	 */
-	private fun showOptionsPopup(anchor: View, options: List<String>, onSelected: (String) -> Unit) {
+	private fun showOptionsPopup(
+		anchor: View,
+		adapter: PopupItemAdapter<PopupItemViewHolder>,
+		onSelected: (String) -> Unit
+	) {
 		val popup = PopupWindow(this.context)
+		val inflater = LayoutInflater.from(this.context)
+		val bridge = PopupItemAdapterBridge(inflater, adapter)
+		adapter.attachBridge(bridge)
 
 		val listView = ListView(this.context).apply {
-			adapter = ArrayAdapter(context, android.R.layout.simple_list_item_1, options)
+			this.adapter = bridge
 			dividerHeight = 0
 		}
 
@@ -965,9 +1437,10 @@ class ComponentMaterialTextInputLayout(
 		popup.setBackgroundDrawable(
 			ContextCompat.getDrawable(this.context, R.drawable.bg_popup_background)
 		)
+		popup.setOnDismissListener { adapter.detachBridge() }
 
 		listView.setOnItemClickListener { _, _, position, _ ->
-			onSelected(options[position])
+			bridge.labelAt(position)?.let(onSelected)
 			popup.dismiss()
 		}
 		popup.showAsDropDown(anchor)
@@ -1058,6 +1531,7 @@ class ComponentMaterialTextInputLayout(
 				params.endToStart = endId
 				params.horizontalBias = 0.5f
 			}
+
 			HintGravity.END -> params.endToStart = endId
 		}
 
@@ -1119,9 +1593,9 @@ class ComponentMaterialTextInputLayout(
 	/** Returns the current hint end anchor (`null` = matches the [EditText]'s own end). */
 	fun getHintEndAnchor(): HintEndAnchor? = mHintEndAnchor
 
-	// =======================================================================
-	// Placeholder — ghost example text with a two-speed fade
-	// =======================================================================
+// =======================================================================
+// Placeholder — ghost example text with a two-speed fade
+// =======================================================================
 
 	/**
 	 * Sets the ghost example text (e.g. `"juan@correo.com"`) shown inline
@@ -1160,7 +1634,12 @@ class ComponentMaterialTextInputLayout(
 	private fun resolvePlaceholderTextColor(): ColorStateList? {
 		mPlaceholderTextColor?.let { return it }
 		val baseColor = mHintTextColor?.defaultColor ?: return null
-		return ColorStateList.valueOf(ColorUtils.setAlphaComponent(baseColor, PLACEHOLDER_FALLBACK_ALPHA))
+		return ColorStateList.valueOf(
+			ColorUtils.setAlphaComponent(
+				baseColor,
+				PLACEHOLDER_FALLBACK_ALPHA
+			)
+		)
 	}
 
 	/**
@@ -1181,7 +1660,7 @@ class ComponentMaterialTextInputLayout(
 			alpha = 0f
 		}
 
-		viewBinding.container.addView(label)
+		view_binding.container.addView(label)
 		label.layoutParams = ConstraintLayout.LayoutParams(
 			ConstraintLayout.LayoutParams.WRAP_CONTENT,
 			ConstraintLayout.LayoutParams.WRAP_CONTENT
@@ -1202,25 +1681,28 @@ class ComponentMaterialTextInputLayout(
 	}
 
 	/**
-	 * Shows, hides or fades the ghost placeholder based on what's actually
-	 * typed in [target], at one of two very different speeds:
+	 * Shows, hides or fades the ghost placeholder based on focus and what's
+	 * actually typed in [target] — three distinct speeds:
 	 *
-	 * - Field empty → placeholder fully visible, no animation needed.
-	 * - What's typed so far is a **prefix of the placeholder** (the user is
-	 *   typing the example value itself) → fades out over
+	 * - Focused **and** empty → placeholder fades **in**, taking over the
+	 *   resting spot the hint deliberately leaves inactive while empty (see
+	 *   [updateFloatingHintLabel]), over [PLACEHOLDER_APPEAR_FADE_DURATION_MS].
+	 * - Not focused (regardless of text) → hidden. A placeholder shown while
+	 *   unfocused would just be noise, since nothing invites the user to
+	 *   compare their input against it right then.
+	 * - Focused, with something typed that's a **prefix of the placeholder**
+	 *   (the user is typing the example value itself) → fades out over
 	 *   [PLACEHOLDER_MATCH_FADE_DURATION_MS], a deliberate, "melting away" pace.
-	 * - What's typed **doesn't match** → fades out over
+	 * - Focused, with something typed that **doesn't match** → fades out over
 	 *   [PLACEHOLDER_MISMATCH_FADE_DURATION_MS] instead — near-instant, so a
 	 *   stale ghost example never lingers over unrelated text.
 	 *
 	 * @param animate `false` for the initial sync (no previous state to
-	 *   animate from); `true` for real text changes.
+	 *   animate from); `true` for real focus/text changes.
 	 */
 	private fun updatePlaceholderVisibility(target: EditText, animate: Boolean) {
 		val label = mPlaceholderLabel ?: return
 		val placeholder = mPlaceholderText
-
-		val typed = target.text?.toString().orEmpty()
 
 		mPlaceholderAnimator?.cancel()
 
@@ -1230,17 +1712,26 @@ class ComponentMaterialTextInputLayout(
 		}
 		label.visibility = VISIBLE
 
+		val typed = target.text?.toString().orEmpty()
+
 		val targetAlpha: Float
 		val duration: Long
 		when {
+			!target.isFocused -> {
+				targetAlpha = 0f
+				duration = PLACEHOLDER_MISMATCH_FADE_DURATION_MS
+			}
+
 			typed.isEmpty() -> {
 				targetAlpha = 1f
-				duration = HINT_ANIMATION_DURATION_MS
+				duration = PLACEHOLDER_APPEAR_FADE_DURATION_MS
 			}
+
 			placeholder.startsWith(typed) -> {
 				targetAlpha = 0f
 				duration = PLACEHOLDER_MATCH_FADE_DURATION_MS
 			}
+
 			else -> {
 				targetAlpha = 0f
 				duration = PLACEHOLDER_MISMATCH_FADE_DURATION_MS
@@ -1255,7 +1746,8 @@ class ComponentMaterialTextInputLayout(
 		val startAlpha = label.alpha
 		mPlaceholderAnimator = ValueAnimator.ofFloat(startAlpha, targetAlpha).apply {
 			this.duration = duration
-			interpolator = if (targetAlpha < startAlpha) FastOutSlowInInterpolator() else android.view.animation.LinearInterpolator()
+			interpolator =
+				if (targetAlpha < startAlpha) FastOutSlowInInterpolator() else android.view.animation.LinearInterpolator()
 			addUpdateListener { label.alpha = it.animatedValue as Float }
 			start()
 		}
@@ -1267,9 +1759,9 @@ class ComponentMaterialTextInputLayout(
 	 * than where typing actually starts.
 	 */
 	private fun HintStartAnchor.alignedStartViewId(): Int = when (this) {
-		HintStartAnchor.START_ICON -> viewBinding.imageStart.id
-		HintStartAnchor.START_LAYOUT -> viewBinding.start.id
-		HintStartAnchor.PREFIX -> viewBinding.prefix.id
+		HintStartAnchor.START_ICON -> view_binding.imageStart.id
+		HintStartAnchor.START_LAYOUT -> view_binding.start.id
+		HintStartAnchor.PREFIX -> view_binding.prefix.id
 	}
 
 	/**
@@ -1278,13 +1770,13 @@ class ComponentMaterialTextInputLayout(
 	 * where typing actually ends.
 	 */
 	private fun HintEndAnchor.alignedEndViewId(): Int = when (this) {
-		HintEndAnchor.END_ICON -> viewBinding.imageEnd.id
-		HintEndAnchor.END_LAYOUT -> viewBinding.end.id
-		HintEndAnchor.SUFFIX -> viewBinding.suffix.id
+		HintEndAnchor.END_ICON -> view_binding.imageEnd.id
+		HintEndAnchor.END_LAYOUT -> view_binding.end.id
+		HintEndAnchor.SUFFIX -> view_binding.suffix.id
 	}
 
 	/**
-	 * Reserves enough space above [viewBinding.container] for the floated
+	 * Reserves enough space above [view_binding.container] for the floated
 	 * hint label to sit fully above the outlined border, instead of
 	 * overlapping it — which is what used to make the border visually cut
 	 * through the label's text once it floated up.
@@ -1297,28 +1789,28 @@ class ComponentMaterialTextInputLayout(
 	 * amount ends up slightly short on some device/font combination.
 	 */
 	private fun reserveSpaceForFloatingHint(target: EditText) {
-		viewBinding.container.clipChildren = false
-		viewBinding.container.clipToPadding = false
-		(viewBinding.container.parent as? ViewGroup)?.apply {
+		view_binding.container.clipChildren = false
+		view_binding.container.clipToPadding = false
+		(view_binding.container.parent as? ViewGroup)?.apply {
 			clipChildren = false
 			clipToPadding = false
 		}
 
 		if (!mHintEnable) return
 
-		val params = viewBinding.container.layoutParams as? ConstraintLayout.LayoutParams ?: return
+		val params = view_binding.container.layoutParams as? ConstraintLayout.LayoutParams ?: return
 		val floatedLabelHeight = target.textSize * HINT_FLOATING_SCALE
 		val reserved = (floatedLabelHeight + HINT_TOP_CLEARANCE_DP.dp).toInt()
 
 		if (params.topMargin < reserved) {
 			params.topMargin = reserved
-			viewBinding.container.layoutParams = params
+			view_binding.container.layoutParams = params
 		}
 	}
 
 	/**
 	 * Creates the floating label used for the M3 hint animation and adds it
-	 * to [viewBinding.container], constrained to overlap the [EditText]
+	 * to [view_binding.container], constrained to overlap the [EditText]
 	 * when resting and to sit above it once floated. Called once from
 	 * [addView].
 	 *
@@ -1345,7 +1837,7 @@ class ComponentMaterialTextInputLayout(
 			importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
 		}
 
-		viewBinding.container.addView(label)
+		view_binding.container.addView(label)
 		label.layoutParams = LayoutParams(
 			LayoutParams.WRAP_CONTENT,
 			LayoutParams.WRAP_CONTENT
@@ -1364,7 +1856,7 @@ class ComponentMaterialTextInputLayout(
 		// without going through setupFloatingHintLabel() again. A one-shot
 		// `target.post { ... }` (the previous approach) only fixed the very
 		// first frame and then silently went stale.
-		val listener = View.OnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+		val listener = OnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
 			if (bottom - top != oldBottom - oldTop) {
 				updateFloatingHintLabel(target, animate = false)
 			}
@@ -1374,10 +1866,15 @@ class ComponentMaterialTextInputLayout(
 	}
 
 	/**
-	 * Applies the M3 "float up" motion: while [target] is focused or has
-	 * text, the label scales down and moves above the field; otherwise it
-	 * rests directly over the (empty, unfocused) field, exactly like a
-	 * normal hint. Also fades the label in/out based on [mHintEnable].
+	 * Applies the M3 "float up" motion: **only once there's actual text** —
+	 * the label scales down and moves above the field; otherwise (empty,
+	 * whether focused or not) it stays "inactive", resting directly over the
+	 * field exactly like a normal hint. This is deliberately *not* tied to
+	 * focus alone: while focused with nothing typed yet, the ghost
+	 * [mPlaceholderLabel] takes over that resting spot instead (see
+	 * [updatePlaceholderVisibility]) — floating the hint on focus alone
+	 * would fight the placeholder for the same space. Also fades the label
+	 * in/out based on [mHintEnable].
 	 *
 	 * The scale pivot is recomputed on every call to match [mHintGravity]:
 	 * a `START`-aligned label shrinks from its left edge, an `END`-aligned
@@ -1409,7 +1906,7 @@ class ComponentMaterialTextInputLayout(
 			HintGravity.END -> label.width.toFloat()
 		}
 
-		val isFloating = target.isFocused || !target.text.isNullOrEmpty()
+		val isFloating = !target.text.isNullOrEmpty() || target.isFocused || animate
 		val targetScale = if (isFloating) HINT_FLOATING_SCALE else 1f
 		val targetTranslationY = if (isFloating) {
 			// Move the label from its resting position (vertically centered
@@ -1428,6 +1925,33 @@ class ComponentMaterialTextInputLayout(
 
 		mHintAnimator?.cancel()
 
+		if (!isFloating) {
+			when (mHintStartAnchor) {
+				HintStartAnchor.START_LAYOUT -> {
+					view_binding.prefix.alpha = 0f
+					view_binding.imageStart.alpha = 0f
+				}
+
+				HintStartAnchor.START_ICON -> {
+					view_binding.prefix.alpha = 0f
+				}
+
+				else -> Unit
+			}
+			when (mHintEndAnchor) {
+				HintEndAnchor.END_LAYOUT -> {
+					view_binding.suffix.alpha = 0f
+					view_binding.imageEnd.alpha = 0f
+				}
+
+				HintEndAnchor.END_ICON -> {
+					view_binding.prefix.alpha = 0f
+				}
+
+				else -> Unit
+			}
+		}
+
 		if (!animate) {
 			label.scaleX = targetScale
 			label.scaleY = targetScale
@@ -1439,6 +1963,10 @@ class ComponentMaterialTextInputLayout(
 		val startScale = label.scaleX
 		val startTranslationY = label.translationY
 		val startAlpha = label.alpha
+		val startPrefixAlpha = view_binding.prefix.alpha
+		val startImageStartAlpha = view_binding.imageStart.alpha
+		val startSuffixAlpha = view_binding.suffix.alpha
+		val startImageEndAlpha = view_binding.imageEnd.alpha
 
 		mHintAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
 			duration = HINT_ANIMATION_DURATION_MS
@@ -1447,8 +1975,33 @@ class ComponentMaterialTextInputLayout(
 				val fraction = animator.animatedValue as Float
 				label.scaleX = startScale + fraction * (targetScale - startScale)
 				label.scaleY = label.scaleX
-				label.translationY = startTranslationY + fraction * (targetTranslationY - startTranslationY)
+				label.translationY =
+					startTranslationY + fraction * (targetTranslationY - startTranslationY)
 				label.alpha = startAlpha + fraction * (targetAlpha - startAlpha)
+				when (mHintStartAnchor) {
+					HintStartAnchor.START_LAYOUT -> {
+						view_binding.prefix.alpha = startPrefixAlpha + fraction * (targetAlpha - startPrefixAlpha)
+						view_binding.imageStart.alpha = startImageStartAlpha + fraction * (targetAlpha - startImageStartAlpha)
+					}
+
+					HintStartAnchor.START_ICON -> {
+						view_binding.prefix.alpha = startPrefixAlpha + fraction * (targetAlpha - startPrefixAlpha)
+					}
+
+					else -> Unit
+				}
+				when (mHintEndAnchor) {
+					HintEndAnchor.END_LAYOUT -> {
+						view_binding.suffix.alpha = startSuffixAlpha + fraction * (targetAlpha - startSuffixAlpha)
+						view_binding.imageEnd.alpha = startImageEndAlpha + fraction * (targetAlpha - startImageEndAlpha)
+					}
+
+					HintEndAnchor.END_ICON -> {
+						view_binding.suffix.alpha = startSuffixAlpha + fraction * (targetAlpha - startSuffixAlpha)
+					}
+
+					else -> Unit
+				}
 			}
 			start()
 		}
@@ -1495,8 +2048,8 @@ class ComponentMaterialTextInputLayout(
 
 	/** Refreshes only the counter's visibility and color (not its text). */
 	private fun applyCounterAppearance() {
-		mCounterTextColor?.let { viewBinding.counter.setTextColor(it) }
-		viewBinding.counter.visibility = if (mCounterEnable) VISIBLE else GONE
+		mCounterTextColor?.let { view_binding.counter.setTextColor(it) }
+		view_binding.counter.visibility = if (mCounterEnable) VISIBLE else GONE
 	}
 
 	/**
@@ -1506,11 +2059,11 @@ class ComponentMaterialTextInputLayout(
 	private fun refreshCounterText() {
 		val target = mEditText ?: return
 		if (mMaxLimit == -1) {
-			viewBinding.counter.text = ""
+			view_binding.counter.text = ""
 			return
 		}
 		val count = target.text?.length ?: 0
-		viewBinding.counter.text = "${minOf(count, mMaxLimit)}/${mMaxLimit}"
+		view_binding.counter.text = "${minOf(count, mMaxLimit)}/${mMaxLimit}"
 	}
 
 	/**
@@ -1620,25 +2173,25 @@ class ComponentMaterialTextInputLayout(
 
 		if (bool) {
 			applyDividerColor(mColorOnError)
-			viewBinding.message.text = mErrorText
-			viewBinding.message.visibility = VISIBLE
-			viewBinding.message.setTextColor(mColorError)
-			viewBinding.counter.setTextColor(mColorError)
-			viewBinding.prefix.setTextColor(mColorError)
-			viewBinding.suffix.setTextColor(mColorError)
-			viewBinding.start.foregroundTintList = ColorStateList.valueOf(mColorError)
-			viewBinding.end.foregroundTintList = ColorStateList.valueOf(mColorError)
+			view_binding.message.text = mErrorText
+			view_binding.message.visibility = VISIBLE
+			view_binding.message.setTextColor(mColorError)
+			view_binding.counter.setTextColor(mColorError)
+			view_binding.prefix.setTextColor(mColorError)
+			view_binding.suffix.setTextColor(mColorError)
+			view_binding.start.foregroundTintList = ColorStateList.valueOf(mColorError)
+			view_binding.end.foregroundTintList = ColorStateList.valueOf(mColorError)
 		} else {
 			val focused = mEditText?.isFocused == true
 			applyDividerColor(if (focused) mColorPrimary else mColorOutline)
-			viewBinding.message.text = mHelperText
-			viewBinding.message.visibility = if (mHelperEnable) VISIBLE else GONE
-			mHelperTextColor?.let { viewBinding.message.setTextColor(it) }
-			mCounterTextColor?.let { viewBinding.counter.setTextColor(it) }
-			mPrefixTextColor?.let { viewBinding.prefix.setTextColor(it) }
-			mSuffixTextColor?.let { viewBinding.suffix.setTextColor(it) }
-			viewBinding.start.foregroundTintList = mStartIconTint
-			viewBinding.end.foregroundTintList = mEndIconTint
+			view_binding.message.text = mHelperText
+			view_binding.message.visibility = if (mHelperEnable) VISIBLE else GONE
+			mHelperTextColor?.let { view_binding.message.setTextColor(it) }
+			mCounterTextColor?.let { view_binding.counter.setTextColor(it) }
+			mPrefixTextColor?.let { view_binding.prefix.setTextColor(it) }
+			mSuffixTextColor?.let { view_binding.suffix.setTextColor(it) }
+			view_binding.start.foregroundTintList = mStartIconTint
+			view_binding.end.foregroundTintList = mEndIconTint
 		}
 	}
 
@@ -1678,19 +2231,48 @@ class ComponentMaterialTextInputLayout(
 	/** Returns whether the leading-icon container is visible. */
 	fun isStartLayoutEnabled(): Boolean = mStartLayoutEnable
 
-	/** Refreshes only the leading icon's drawable, tint and visibility. */
-	private fun applyStartIcon() {
-		viewBinding.imageStart.visibility = if (mStartIconEnable) VISIBLE else GONE
-		viewBinding.imageStart.setImageDrawable(mStartIcon)
-		mStartIconTint?.let { viewBinding.imageStart.imageTintList = it }
+	/**
+	 * Sets the visual style of the leading-icon container's background
+	 * ([ButtonLayoutStyle]): a three-dot "more" glyph, or the normal
+	 * outlined look.
+	 */
+	fun setStartButtonLayoutStyle(style: ButtonLayoutStyle) {
+		mStartButtonLayoutStyle = style
+		applyStartLayout()
 	}
 
-	/** Refreshes only the leading-icon container's visibility. */
+	/** Returns the leading-icon container's current button layout style. */
+	fun getStartButtonLayoutStyle(): ButtonLayoutStyle = mStartButtonLayoutStyle
+
+	/** Refreshes only the leading icon's drawable, tint and visibility. */
+	private fun applyStartIcon() {
+		view_binding.imageStart.visibility = if (mStartIconEnable) VISIBLE else GONE
+		view_binding.imageStart.setImageDrawable(mStartIcon)
+		mStartIconTint?.let { view_binding.imageStart.imageTintList = it }
+	}
+
+	/**
+	 * Refreshes only the leading-icon container's visibility and background.
+	 *
+	 * The background is entirely owned by [mStartButtonLayoutStyle] — it no
+	 * longer participates in the shared focus/error state-list drawable
+	 * installed by [installBorderSelector] (see that function's KDoc for
+	 * why `start`/`end` were pulled out of it).
+	 */
 	private fun applyStartLayout() {
-		viewBinding.start.visibility = if (mStartLayoutEnable) VISIBLE else GONE
-		(viewBinding.container.layoutParams as LayoutParams).apply {
-			marginStart = if (mStartLayoutEnable) 5 else 0
+		view_binding.start.visibility = if (mStartLayoutEnable) VISIBLE else GONE
+		(view_binding.container.layoutParams as LayoutParams).apply {
+			marginStart = if (mStartLayoutEnable) 5.dp else 0
 		}
+		view_binding.start.background =
+			if (mStartButtonLayoutStyle == ButtonLayoutStyle.THREE_DOT) {
+				ThreeDotsDrawable(mColorOutline)
+			} else {
+				ContextCompat.getDrawable(
+					context,
+					R.drawable.ef_component_material_text_input_layout_outline
+				)
+			}
 	}
 
 	/** Shows or hides the trailing (end) icon. */
@@ -1729,22 +2311,60 @@ class ComponentMaterialTextInputLayout(
 	/** Returns whether the trailing-icon container is visible. */
 	fun isEndLayoutEnabled(): Boolean = mEndLayoutEnable
 
-	/** Refreshes only the trailing icon's drawable, tint and visibility. */
-	private fun applyEndIcon() {
-		viewBinding.imageEnd.visibility = if (mEndIconEnable) VISIBLE else GONE
-		viewBinding.imageEnd.setImageDrawable(mEndIcon)
-		mEndIconTint?.let { viewBinding.imageEnd.imageTintList = it }
+	/**
+	 * Sets the visual style of the trailing-icon container's background
+	 * ([ButtonLayoutStyle]): a three-dot "more" glyph, or the normal
+	 * outlined look.
+	 */
+	fun setEndButtonLayoutStyle(style: ButtonLayoutStyle) {
+		mEndButtonLayoutStyle = style
+		applyEndLayout()
 	}
 
-	/** Refreshes only the trailing-icon container's visibility. */
+	/** Returns the trailing-icon container's current button layout style. */
+	fun getEndButtonLayoutStyle(): ButtonLayoutStyle = mEndButtonLayoutStyle
+
+	/** Refreshes only the trailing icon's drawable, tint and visibility. */
+	private fun applyEndIcon() {
+		view_binding.imageEnd.visibility = if (mEndIconEnable) VISIBLE else GONE
+		view_binding.imageEnd.setImageDrawable(mEndIcon)
+		mEndIconTint?.let { view_binding.imageEnd.imageTintList = it }
+	}
+
+	/**
+	 * Refreshes only the trailing-icon container's visibility and
+	 * background — same deal as [applyStartLayout]: fully owned by
+	 * [mEndButtonLayoutStyle], independent of the shared border selector.
+	 */
 	private fun applyEndLayout() {
-		viewBinding.end.visibility = if (mEndLayoutEnable) VISIBLE else GONE
-		(viewBinding.container.layoutParams as LayoutParams).apply {
-			marginEnd = if (mEndLayoutEnable) 5 else 0
+		view_binding.end.visibility = if (mEndLayoutEnable) VISIBLE else GONE
+		(view_binding.container.layoutParams as LayoutParams).apply {
+			marginEnd = if (mEndLayoutEnable) 5.dp else 0
+		}
+		view_binding.end.background = if (mEndButtonLayoutStyle == ButtonLayoutStyle.THREE_DOT) {
+			ThreeDotsDrawable(mColorOutline)
+		} else {
+			ContextCompat.getDrawable(
+				context,
+				R.drawable.ef_component_material_text_input_layout_outline
+			)
 		}
 	}
 
 	// wired directly to the target view instead of going through an apply*()
+	// module.
+
+	/**
+	 * Sets the long-click listener for the **leading icon image** ([ImageView]
+	 * inside `start`), analogous to `TextInputLayout.setStartIconLongOnClickListener`.
+	 *
+	 * @param click listener to invoke on long click, or `null` to remove it (this
+	 *   also makes the icon non-clickable again).
+	 */
+	fun setStartImageOnLongClickListener(click: View.OnLongClickListener?) {
+		view_binding.imageStart.setOnLongClickListener(click)
+		view_binding.imageStart.isClickable = click != null
+	}
 	// module.
 
 	/**
@@ -1755,8 +2375,8 @@ class ComponentMaterialTextInputLayout(
 	 *   also makes the icon non-clickable again).
 	 */
 	fun setStartImageOnClickListener(click: View.OnClickListener?) {
-		viewBinding.imageStart.setOnClickListener(click)
-		viewBinding.imageStart.isClickable = click != null
+		view_binding.imageStart.setOnClickListener(click)
+		view_binding.imageStart.isClickable = click != null
 	}
 
 	/**
@@ -1767,8 +2387,8 @@ class ComponentMaterialTextInputLayout(
 	 *   also makes the icon non-clickable again).
 	 */
 	fun setEndImageOnClickListener(click: View.OnClickListener?) {
-		viewBinding.imageEnd.setOnClickListener(click)
-		viewBinding.imageEnd.isClickable = click != null
+		view_binding.imageEnd.setOnClickListener(click)
+		view_binding.imageEnd.isClickable = click != null
 	}
 
 	/**
@@ -1779,8 +2399,8 @@ class ComponentMaterialTextInputLayout(
 	 * @param click listener to invoke on click, or `null` to remove it.
 	 */
 	fun setStartLayoutOnClickListener(click: View.OnClickListener?) {
-		viewBinding.start.setOnClickListener(click)
-		viewBinding.start.isClickable = click != null
+		view_binding.start.setOnClickListener(click)
+		view_binding.start.isClickable = click != null
 	}
 
 	/**
@@ -1791,8 +2411,8 @@ class ComponentMaterialTextInputLayout(
 	 * @param click listener to invoke on click, or `null` to remove it.
 	 */
 	fun setEndLayoutOnClickListener(click: View.OnClickListener?) {
-		viewBinding.end.setOnClickListener(click)
-		viewBinding.end.isClickable = click != null
+		view_binding.end.setOnClickListener(click)
+		view_binding.end.isClickable = click != null
 	}
 
 	/**
@@ -1802,18 +2422,24 @@ class ComponentMaterialTextInputLayout(
 	fun getText(): String = mEditText?.text.toString()
 
 	/**
-	 * Installs the border **state-list drawable** on `start`/`container`/`end`
-	 * a single time, replacing the old approach of calling
-	 * `setBackgroundResource()` with a different drawable resource on every
-	 * focus/error/enabled change.
+	 * Installs the border **state-list drawable** on `container` a single
+	 * time, replacing the old approach of calling `setBackgroundResource()`
+	 * with a different drawable resource on every focus/error/enabled change.
 	 *
-	 * From this point on, the visible border is switched **by the platform**,
-	 * based on three plain [View] booleans:
+	 * `start`/`end` (the icon containers) are **not** part of this — their
+	 * background is owned entirely by [mStartButtonLayoutStyle] /
+	 * [mEndButtonLayoutStyle] (see [applyStartLayout] / [applyEndLayout]),
+	 * since a three-dot "more" button doesn't make sense reacting to the
+	 * field's own focus/error look. Installing the selector there too would
+	 * just get immediately overwritten by those functions anyway.
+	 *
+	 * From this point on, `container`'s visible border is switched **by the
+	 * platform**, based on two plain [View] booleans:
 	 * - `isActivated` → error state (checked first, takes priority)
 	 * - `isEnabled` → disabled state
 	 * - `isSelected` → focused state
 	 *
-	 * ef_selector_component_material_text_input_layout_outline.xml` must exist under
+	 * `ef_selector_component_material_text_input_layout_outline.xml` must exist under
 	 * `res/drawable` with states in that priority order:
 	 * ```xml
 	 * <selector xmlns:android="http://schemas.android.com/apk/res/android">
@@ -1827,36 +2453,30 @@ class ComponentMaterialTextInputLayout(
 	 */
 	private fun installBorderSelector() {
 		val selector = R.drawable.ef_selector_component_material_text_input_layout_outline
-		viewBinding.start.setBackgroundResource(selector)
-		viewBinding.container.setBackgroundResource(selector)
-		viewBinding.end.setBackgroundResource(selector)
+		view_binding.container.setBackgroundResource(selector)
 	}
 
 	/**
-	 * Toggles the `isActivated` (error) flag on `start`/`container`/`end`,
-	 * letting the state-list drawable installed by [installBorderSelector]
-	 * pick the right sub-drawable natively — no drawable resource lookup runs here.
+	 * Toggles the `isActivated` (error) flag on `container`, letting the
+	 * state-list drawable installed by [installBorderSelector] pick the
+	 * right sub-drawable natively — no drawable resource lookup runs here.
 	 */
 	private fun setBorderErrorState(error: Boolean) {
-		viewBinding.start.isActivated = error
-		viewBinding.container.isActivated = error
-		viewBinding.end.isActivated = error
+		view_binding.container.isActivated = error
 	}
 
 	/**
-	 * Toggles the `isSelected` (focused-look) flag on `start`/`container`/`end`.
-	 * Ignored while in an error state, since error already takes visual
-	 * priority in the selector.
+	 * Toggles the `isSelected` (focused-look) flag on `container`. Ignored
+	 * while in an error state, since error already takes visual priority in
+	 * the selector.
 	 */
 	private fun setBorderFocusedState(focused: Boolean) {
-		viewBinding.start.isSelected = focused
-		viewBinding.container.isSelected = focused
-		viewBinding.end.isSelected = focused
+		view_binding.container.isSelected = focused
 	}
 
 	/** Applies a precomputed [color] to the divider — a flat color set, not a resource lookup. */
 	private fun applyDividerColor(color: ColorStateList) {
-		viewBinding.divider.setDividerColor(color)
+		view_binding.divider.setDividerColor(color)
 	}
 
 	/**
@@ -1875,20 +2495,20 @@ class ComponentMaterialTextInputLayout(
 		}
 
 		if (child !is EditText)
-			throw RuntimeException("You can set only EditText, AutoCompleteTextView or MultiAutoCompleteTextView as child of ComponentMaterialTextInputLayout")
+			throw RuntimeException("You can set only EditText, AutoCompleteTextView or MultiAutoCompleteTextView as child of ComponentTextInputLayout")
 
 		if (mEditText != null)
-			throw RuntimeException("ComponentMaterialTextInputLayout only supports a single EditText child")
+			throw RuntimeException("ComponentTextInputLayout only supports a single EditText child")
 
 		mEditText = child
 
-		// The floating label (setupFloatingHintLabel) and this view's own
-		// layoutParams below constrain against `child.id`. If the caller's
-		// XML didn't declare android:id on the EditText, child.id is
-		// View.NO_ID (-1), which ConstraintLayout silently treats as "no
-		// constraint" — the label then had no valid vertical anchor and
-		// floated to the top of the container instead of centering on the
-		// field. Guarantee a real id here regardless of what the caller did.
+// The floating label (setupFloatingHintLabel) and this view's own
+// layoutParams below constrain against `child.id`. If the caller's
+// XML didn't declare android:id on the EditText, child.id is
+// View.NO_ID (-1), which ConstraintLayout silently treats as "no
+// constraint" — the label then had no valid vertical anchor and
+// floated to the top of the container instead of centering on the
+// field. Guarantee a real id here regardless of what the caller did.
 		if (child.id == View.NO_ID) {
 			child.id = View.generateViewId()
 		}
@@ -1896,10 +2516,10 @@ class ComponentMaterialTextInputLayout(
 		child.setBackgroundColor(context.getColor(android.R.color.transparent))
 
 		if (child is AutoCompleteTextView) {
-			viewBinding.divider.visibility = VISIBLE
-			viewBinding.dropdown.visibility = VISIBLE
+			view_binding.divider.visibility = VISIBLE
+			view_binding.dropdown.visibility = VISIBLE
 
-			viewBinding.dropdown.setOnClickListener {
+			view_binding.dropdown.setOnClickListener {
 				child.showDropDown()
 			}
 		}
@@ -1907,10 +2527,10 @@ class ComponentMaterialTextInputLayout(
 		val height = params?.height ?: ViewGroup.LayoutParams.WRAP_CONTENT
 
 		child.layoutParams = LayoutParams(0, height).apply {
-			startToEnd = viewBinding.prefix.id
-			endToStart = viewBinding.suffix.id
-			topToTop = viewBinding.container.id
-			bottomToBottom = viewBinding.container.id
+			startToEnd = view_binding.prefix.id
+			endToStart = view_binding.suffix.id
+			topToTop = view_binding.container.id
+			bottomToBottom = view_binding.container.id
 
 			marginEnd = 10.dp
 			marginStart = 10.dp
@@ -1923,10 +2543,11 @@ class ComponentMaterialTextInputLayout(
 				setBorderFocusedState(hasFocus)
 				applyDividerColor(if (hasFocus) mColorPrimary else mColorOutline)
 			}
-			updateFloatingHintLabel(child, animate = true)
+			updateFloatingHintLabel(child, animate = hasFocus)
+			updatePlaceholderVisibility(child, animate = hasFocus)
 		}
 
-		viewBinding.container.addView(child, index, child.layoutParams)
+		view_binding.container.addView(child, index, child.layoutParams)
 
 		// These modules depend on the EditText, so they only run now that it exists.
 		setupFloatingHintLabel(child)
@@ -1950,7 +2571,10 @@ class ComponentMaterialTextInputLayout(
 	 */
 	private fun installAccessibilityDelegate(target: EditText) {
 		ViewCompat.setAccessibilityDelegate(target, object : AccessibilityDelegateCompat() {
-			override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfoCompat) {
+			override fun onInitializeAccessibilityNodeInfo(
+				host: View,
+				info: AccessibilityNodeInfoCompat
+			) {
 				super.onInitializeAccessibilityNodeInfo(host, info)
 				if (mInErrorState) info.error = mErrorText
 			}
@@ -1974,18 +2598,18 @@ class ComponentMaterialTextInputLayout(
 	override fun setEnabled(enabled: Boolean) {
 		super.setEnabled(enabled)
 		mEditText?.isEnabled = isEnabled
-		viewBinding.container.isEnabled = isEnabled
-		viewBinding.prefix.isEnabled = isEnabled
-		viewBinding.suffix.isEnabled = isEnabled
-		viewBinding.start.isEnabled = isEnabled
-		viewBinding.end.isEnabled = isEnabled
-		viewBinding.imageStart.isEnabled = isEnabled
-		viewBinding.imageEnd.isEnabled = isEnabled
+		view_binding.container.isEnabled = isEnabled
+		view_binding.prefix.isEnabled = isEnabled
+		view_binding.suffix.isEnabled = isEnabled
+		view_binding.start.isEnabled = isEnabled
+		view_binding.end.isEnabled = isEnabled
+		view_binding.imageStart.isEnabled = isEnabled
+		view_binding.imageEnd.isEnabled = isEnabled
 
-		// No setBackgroundResource() call needed: state_enabled="false" is
-		// already part of the selector installed by installBorderSelector(),
-		// and the isEnabled assignments above make the platform pick it up
-		// automatically via refreshDrawableState().
+// No setBackgroundResource() call needed: state_enabled="false" is
+// already part of the selector installed by installBorderSelector(),
+// and the isEnabled assignments above make the platform pick it up
+// automatically via refreshDrawableState().
 		applyDividerColor(if (isEnabled) mColorOutline else mColorDisabledDivider)
 	}
 
@@ -1995,5 +2619,76 @@ class ComponentMaterialTextInputLayout(
 		} else {
 			this
 		}
+	}
+
+	/**
+	 * A drawable that renders three equally sized dots horizontally.
+	 *
+	 * The dots are centered within the drawable bounds and their size is
+	 * calculated relative to the smaller dimension of the bounds.
+	 *
+	 * @param color the color used to draw the dots.
+	 */
+	private class ThreeDotsDrawable(@ColorInt private val color: Int) : Drawable() {
+
+		constructor(color: ColorStateList) : this(color.defaultColor)
+
+		/**
+		 * Paint used to render the dots.
+		 *
+		 * Antialiasing is enabled to produce smooth circle edges.
+		 */
+		private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+			this.color = this@ThreeDotsDrawable.color
+			style = Paint.Style.FILL
+		}
+
+		/**
+		 * Draws the three dots centered within the drawable bounds.
+		 *
+		 * The dot radius is calculated from the smaller dimension of the
+		 * drawable bounds. The horizontal spacing between the dots is
+		 * derived from the calculated radius.
+		 *
+		 * @param canvas canvas on which the drawable is rendered.
+		 */
+		override fun draw(canvas: Canvas) {
+			val bounds = bounds
+			val centerY = bounds.exactCenterY()
+			val radius = min(bounds.width(), bounds.height()) / 5f
+			val spacing = radius * 3.9f
+			val centerX = bounds.exactCenterX()
+
+			canvas.drawCircle(centerX, centerY - spacing, radius, paint)
+			canvas.drawCircle(centerX, centerY, radius, paint)
+			canvas.drawCircle(centerX, centerY + spacing, radius, paint)
+		}
+
+		/**
+		 * Sets the opacity of the dots.
+		 *
+		 * @param alpha alpha value applied to the drawable, from 0 to 255.
+		 */
+		override fun setAlpha(alpha: Int) {
+			paint.alpha = alpha
+		}
+
+		/**
+		 * Applies a color filter to the dots.
+		 *
+		 * @param colorFilter color filter applied when rendering the drawable,
+		 * or `null` to remove the current filter.
+		 */
+		override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) {
+			paint.colorFilter = colorFilter
+		}
+
+		/**
+		 * Returns the opacity of this drawable.
+		 *
+		 * @return [PixelFormat.TRANSLUCENT], since the drawable supports
+		 * transparency through its alpha value.
+		 */
+		override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 	}
 }

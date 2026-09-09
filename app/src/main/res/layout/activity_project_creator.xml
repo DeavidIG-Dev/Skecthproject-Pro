@@ -7,7 +7,7 @@
 	android:layout_height="match_parent"
 	android:clipChildren="false">
 
-	<com.deavidig.mod.deaniel.toolbar.widget.ComponentToolbar
+	<com.deavidig.mod.deanielig.toolbar.widget.ComponentToolbar
 		android:id="@+id/bar"
 		android:layout_width="match_parent"
 		android:layout_height="?actionBarSize"
@@ -17,11 +17,27 @@
 		app:leftMenu="@menu/activity_project_creator_toolbar_left_menu"
 		app:rightMenu="@menu/activity_project_creator_toolbar_right_menu"
 		app:navigationIcon="@drawable/ic_arrow_back_24"
-		app:subtitle="Home"
+		app:subtitle=":app - Home"
 		app:subtitleTextColor="@android:color/darker_gray"
 		app:title="Project Creator" />
 
-	<androidx.viewpager2.widget.ViewPager2
+	<com.deavidig.mod.deanielig.backdrop.widget.ComponentBackdropLayout
+		android:id="@+id/backdrop"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+	    app:frontLayerCornerRadius="16dp"
+		app:frontLayoutPeekHeight="48dp"
+		app:frontLayerElevation="32dp"
+		app:frontLayerDarkenAmount="0"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/bar" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+<!--
+<androidx.viewpager2.widget.ViewPager2
 		android:id="@+id/pager_filter"
 		android:layout_width="0dp"
 		android:layout_height="0dp"
@@ -30,48 +46,4 @@
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
 		app:layout_constraintTop_toBottomOf="@+id/bar" />
-
-	<com.google.android.material.floatingtoolbar.FloatingToolbarLayout
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_margin="16dp"
-		android:padding="0dp"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintStart_toStartOf="parent">
-
-		<com.google.android.material.tabs.TabLayout
-			android:id="@+id/tab_filter"
-			android:layout_width="250dp"
-			android:layout_height="wrap_content"
-			android:background="@drawable/tab_background"
-			android:layout_gravity="center"
-			app:tabIconTint="@color/tab_icon_m3_selector"
-			app:tabIndicator="@drawable/tab_indicator_background"
-			app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
-			app:tabIndicatorAnimationMode="elastic"
-			app:tabIndicatorFullWidth="false"
-			app:tabIndicatorGravity="stretch"
-			app:tabMinWidth="56dp"
-			app:tabRippleColor="@null">
-
-			<com.google.android.material.tabs.TabItem
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:icon="@drawable/ic_home_24" />
-
-			<com.google.android.material.tabs.TabItem
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:icon="@drawable/ic_gradle_32" />
-
-			<com.google.android.material.tabs.TabItem
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:icon="@drawable/ic_code_xml_24" />
-
-		</com.google.android.material.tabs.TabLayout>
-
-	</com.google.android.material.floatingtoolbar.FloatingToolbarLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+-->

@@ -9,10 +9,24 @@
 	<style name="Widget.ComponentMaterial.ComponentMaterialTextInputLayout.Outline.Joined" parent="" />
 	<style name="Widget.ComponentMaterial.ComponentMaterialTextInputLayout.Filled" parent="" />
 
-	<style name="IndicadorMasPequeno">
-		<item name="android:width">10dp</item>
-		<item name="android:height">28dp</item>
-		<item name="marginHorizontal">2dp</item>
-		<item name="color">?attr/colorPrimaryContainer</item>
+	<style name="Widget.ComponentMaterial.SearchView" parent="">
+		<item name="containedAnimationEnabled">true</item>
 	</style>
+
+	<style name="CustomPillButton" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+		<item name="android:textColor">@color/tab_icon_m3_selector</item>
+		<item name="backgroundTint">@color/tab_background_m3_selector</item>
+		<item name="iconTint">@color/tab_icon_m3_selector</item>
+		<item name="iconGravity">textStart</item>
+		<item name="iconPadding">4dp</item>
+		<item name="shapeAppearanceOverlay">@style/ShapeAppearance.Pill</item>
+		<item name="elevation">0dp</item>
+		<item name="rippleColor">@android:color/transparent</item>
+	</style>
+
+	<style name="ShapeAppearance.Pill" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+		<item name="cornerSize">50%</item>
+	</style>
+
+	<attr name="darkGrey" format="color">#FF808080</attr>
 </resources>

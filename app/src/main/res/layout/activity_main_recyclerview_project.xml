@@ -6,7 +6,7 @@
 	android:layout_width="match_parent"
 	android:layout_height="75dp">
 
-	<com.deavidig.mod.deaniel.divider.widget.AppCompatComponentMaterialDivider
+	<com.deavidig.mod.deanielig.divider.widget.AppCompatComponentMaterialDivider
 		android:id="@+id/top_project"
 		android:layout_width="0dp"
 		android:layout_height="2dp"
@@ -67,7 +67,7 @@
 		app:layout_constraintEnd_toEndOf="@+id/project_icon"
 		app:layout_constraintStart_toStartOf="@+id/project_icon" />
 
-	<com.deavidig.mod.deaniel.divider.widget.ComponentMaterialDivider
+	<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
 		android:layout_width="2dp"
 		android:layout_height="35dp"
 		android:layout_marginEnd="7.5dp"
@@ -89,7 +89,7 @@
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
 
-	<com.deavidig.mod.deaniel.divider.widget.ComponentMaterialDivider
+	<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
 		android:id="@+id/bottom_project"
 		android:layout_width="0dp"
 		android:layout_height="2dp"

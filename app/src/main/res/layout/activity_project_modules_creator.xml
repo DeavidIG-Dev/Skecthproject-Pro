@@ -7,7 +7,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.deavidig.mod.deaniel.toolbar.widget.ComponentToolbar
+    <com.deavidig.mod.deanielig.toolbar.widget.ComponentToolbar
         android:id="@+id/bar"
         android:layout_width="0dp"
         android:layout_height="?attr/actionBarSize"

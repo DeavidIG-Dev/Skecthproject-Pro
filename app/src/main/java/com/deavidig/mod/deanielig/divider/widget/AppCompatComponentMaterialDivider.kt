@@ -1,4 +1,4 @@
-package com.deavidig.mod.deaniel.divider.widget
+package com.deavidig.mod.deanielig.divider.widget
 
 import android.content.Context
 import android.graphics.Canvas
