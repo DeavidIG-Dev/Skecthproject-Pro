@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!--
+		Fixed (not runtime-generated) ids for ComponentBackDropLayout's two
+		internal fragment containers. Keeping these as compiled resource ids,
+		instead of View.generateViewId(), is what lets FragmentManager
+		correctly reattach each layer's fragment to the right container
+		across configuration changes without any extra saved-state handling.
+	-->
+	<item name="component_backdrop_back_layer_container" type="id" />
+	<item name="component_backdrop_front_layer_container" type="id" />
+</resources>

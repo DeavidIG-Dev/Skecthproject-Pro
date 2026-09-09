@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<declare-styleable name="ComponentMaterialDivider">
+
+		<attr name="dividerRadiusSize" format="dimension" />
+
+		<attr name="dividerColor" format="color|reference" />
+
+	</declare-styleable>
+
+	<declare-styleable name="AppCompatComponentMaterialDivider">
+
+		<attr name="dividerRadiusTopLeftSize" format="dimension" />
+		<attr name="dividerRadiusTopRightSize" format="dimension" />
+		<attr name="dividerRadiusBottomLeftSize" format="dimension" />
+		<attr name="dividerRadiusBottomRightSize" format="dimension" />
+
+	</declare-styleable>
+
+	<declare-styleable name="ComponentTextInputLayout">
+
+		<attr name="prefixText" format="string" />
+		<attr name="prefixEnable" format="boolean" />
+		<attr name="prefixTextColor" format="color" />
+
+		<attr name="suffixText" format="string" />
+		<attr name="suffixEnable" format="boolean" />
+		<attr name="suffixTextColor" format="color" />
+
+		<attr name="hintText" format="string" />
+		<attr name="hintEnable" format="boolean" />
+		<attr name="hintTextColor" format="color" />
+
+		<attr name="counterMaxLength" format="integer" />
+		<attr name="counterEnable" format="boolean" />
+		<attr name="counterTextColor" format="reference" />
+		<attr name="counterLimit" format="boolean" />
+
+		<attr name="helperText" format="string" />
+		<attr name="helperEnable" format="boolean" />
+		<attr name="helperTextColor" format="color" />
+
+		<attr name="startIconDrawable" format="reference" />
+		<attr name="startIconTint" format="color" />
+		<attr name="startIconEnable" format="boolean" />
+
+		<attr name="endIconDrawable" format="reference" />
+		<attr name="endIconTint" format="color" />
+		<attr name="endIconEnable" format="boolean" />
+
+		<attr name="errorText" format="string" />
+		<attr name="errorEnable" format="boolean" />
+		<attr name="errorTextColor" format="color" />
+
+		<attr name="startLayoutEnable" format="boolean" />
+		<attr name="startLayoutStyle" format="enum">
+			<enum value="0" name="theedot" />
+			<enum value="1" name="normal" />
+		</attr>
+
+		<attr name="endLayoutEnable" format="boolean" />
+		<attr name="endLayoutStyle" format="enum">
+			<enum value="0" name="theedot" />
+			<enum value="1" name="normal" />
+		</attr>
+
+		<attr name="headerText" format="string" />
+		<attr name="headerEnable" format="boolean" />
+		<attr name="headerTextColor" format="color" />
+		<attr name="headerTextSize" format="dimension" />
+
+		<attr name="hintGravity" format="enum">
+			<enum name="start" value="0" />
+			<enum name="center" value="1" />
+			<enum name="end" value="2" />
+		</attr>
+
+		<attr name="hintStartAnchor" format="enum">
+			<enum name="startIcon" value="1" />
+			<enum name="layout" value="2" />
+			<enum name="prefix" value="3" />
+		</attr>
+
+		<attr name="hintEndAnchor" format="enum">
+			<enum name="endIcon" value="1" />
+			<enum name="layout" value="2" />
+			<enum name="suffix" value="3" />
+		</attr>
+
+		<attr name="placeholderText" format="string" />
+		<attr name="placeholderEnable" format="boolean" />
+		<attr name="placeholderTextColor" format="color" />
+
+	</declare-styleable>
+
+	<declare-styleable name="ComponentToolbar">
+
+		<attr name="title" format="string" />
+		<attr name="subtitle" format="string" />
+		<attr name="titleTextColor" format="color" />
+		<attr name="titleTextSize" format="dimension" />
+		<attr name="titleTextAppearance" format="reference" />
+		<attr name="subtitleTextColor" format="color" />
+		<attr name="subtitleTextSize" format="dimension" />
+		<attr name="subtitleTextAppearance" format="reference" />
+
+		<attr name="titleAlignment" format="enum">
+			<enum name="start" value="0" />
+			<enum name="center" value="1" />
+			<enum name="end" value="2" />
+		</attr>
+		<attr name="subtitleAlignment" format="enum">
+			<enum name="start" value="0" />
+			<enum name="center" value="1" />
+			<enum name="end" value="2" />
+		</attr>
+
+		<attr name="navigationIcon" format="reference" />
+		<attr name="navigationIconTint" format="color" />
+		<attr name="navigationContentDescription" format="string" />
+
+		<attr name="logo" format="reference" />
+		<attr name="logoTint" format="color" />
+		<attr name="logoContentDescription" format="string" />
+
+		<attr name="leftMenu" format="reference" />
+		<attr name="rightMenu" format="reference" />
+		<attr name="leftOverflowIcon" format="reference" />
+		<attr name="rightOverflowIcon" format="reference" />
+
+		<attr name="contentInsetStartWithNavigation" format="dimension" />
+		<attr name="contentInsetEnd" format="dimension" />
+
+		<attr name="enableHideOnScroll" format="boolean" />
+
+	</declare-styleable>
+
+	<declare-styleable name="ComponentSearchBar">
+
+		<attr name="title" />
+		<attr name="subtitle" />
+		<attr name="titleTextColor" />
+		<attr name="titleTextSize" />
+		<attr name="titleTextAppearance" />
+		<attr name="subtitleTextColor" />
+		<attr name="subtitleTextSize" />
+		<attr name="subtitleTextAppearance" />
+		<attr name="titleAlignment" />
+		<attr name="subtitleAlignment" />
+
+		<attr name="navigationIcon" />
+		<attr name="navigationIconTint" />
+		<attr name="navigationContentDescription" />
+
+		<attr name="searchNavigationIcon" format="reference" />
+		<attr name="searchNavigationIconTint" format="color" />
+		<attr name="searchNavigationContentDescription" format="string" />
+
+		<attr name="android:hint" format="string" />
+		<attr name="android:text" format="string" />
+		<attr name="clearIconEnable" format="boolean" />
+		<attr name="clearIconTint" format="color" />
+
+		<attr name="leftMenu" />
+		<attr name="rightMenu" />
+		<attr name="leftOverflowIcon" />
+		<attr name="rightOverflowIcon" />
+
+		<attr name="pillMenuLeft" format="reference" />
+		<attr name="pillMenuLeftOverflowIcon" format="reference" />
+
+		<attr name="pillMenuRight" format="reference" />
+		<attr name="pillMenuRightOverflowIcon" format="reference" />
+
+		<attr name="pillBackgroundColor" format="color" />
+		<attr name="pillElevation" format="dimension" />
+
+		<attr name="contentInsetStartWithNavigation" />
+		<attr name="contentInsetEnd" />
+
+		<attr name="enableHideOnScroll" />
+
+	</declare-styleable>
+
+	<declare-styleable name="ComponentBackdropLayout">
+		<!-- Height of the front layer strip that stays visible when the backdrop is revealed. -->
+		<attr name="frontLayoutPeekHeight" format="dimension" />
+		<!-- Corner radius applied to the front layer's outline/clip. -->
+		<attr name="frontLayerCornerRadius" format="dimension" />
+		<!-- Elevation of the front layer above the back layer. -->
+		<attr name="frontLayerElevation" format="dimension" />
+		<!-- Duration, in milliseconds, of the reveal/conceal animation. -->
+		<attr name="backDropAnimationDuration" format="integer" />
+		<!-- State the backdrop starts in before any reveal()/conceal() call. -->
+		<attr name="initialState" format="enum">
+			<enum name="concealed" value="0" />
+			<enum name="revealed" value="1" />
+		</attr>
+		<!-- Back layer background. Defaults to the theme's colorOnSurface. -->
+		<attr name="backLayoutBackground" format="reference|color" />
+		<!-- Front layer background. Defaults to colorOnSurface darkened by frontLayerDarkenAmount. -->
+		<attr name="frontLayoutBackground" format="reference|color" />
+		<!-- How much darker than colorOnSurface the front layer's default background is (0f-1f). Ignored if frontLayoutBackground is set. -->
+		<attr name="frontLayerDarkenAmount" format="float" />
+	</declare-styleable>
+
+</resources>

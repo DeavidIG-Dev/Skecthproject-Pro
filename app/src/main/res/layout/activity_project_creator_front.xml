@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent">
+
+	<androidx.viewpager2.widget.ViewPager2
+		android:id="@+id/pager_filter"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<com.google.android.material.floatingtoolbar.FloatingToolbarLayout
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_margin="16dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent">
+
+		<com.google.android.material.tabs.TabLayout
+			android:id="@+id/tab_filter"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:background="@null"
+			android:layout_gravity="center"
+			app:tabIconTint="@color/tab_icon_m3_selector"
+			app:tabIndicator="@drawable/tab_indicator_background"
+			app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
+			app:tabIndicatorAnimationMode="elastic"
+			app:tabIndicatorFullWidth="false"
+			app:tabIndicatorGravity="stretch"
+			app:tabMinWidth="64dp"
+			app:tabRippleColor="@null">
+
+			<com.google.android.material.tabs.TabItem
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:icon="@drawable/ic_home_24" />
+
+			<com.google.android.material.tabs.TabItem
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:icon="@drawable/ic_gradle_32" />
+
+		</com.google.android.material.tabs.TabLayout>
+
+
+	</com.google.android.material.floatingtoolbar.FloatingToolbarLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

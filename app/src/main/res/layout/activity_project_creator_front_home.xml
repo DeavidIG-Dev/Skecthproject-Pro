@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent">
+
+	<com.google.android.material.imageview.ShapeableImageView
+		android:id="@+id/shapeableImageView"
+		android:layout_width="75dp"
+		android:layout_height="75dp"
+		android:layout_marginTop="30dp"
+		android:src="@mipmap/ic_launcher_round"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		app:shapeAppearance="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded" />
+
+	<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+		android:id="@+id/application_name"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="10dp"
+		android:layout_marginHorizontal="5dp"
+		app:hintEnable="true"
+		app:hintStartAnchor="layout"
+		app:hintText="Enter Application Name"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/shapeableImageView"
+		app:startIconDrawable="@drawable/ic_android_24"
+		app:startIconEnable="true">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:singleLine="true"
+			android:text="Sketch App" />
+
+	</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+	<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+		android:id="@+id/package_name"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="10dp"
+		android:layout_marginHorizontal="5dp"
+		app:hintEnable="true"
+		app:hintStartAnchor="layout"
+		app:hintText="Enter Package Name"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/application_name"
+		app:endLayoutEnable="true"
+		app:endLayoutStyle="theedot"
+		app:startIconDrawable="@drawable/ic_deployed_code_24"
+		app:startIconEnable="true">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:singleLine="true"
+			android:text="sketch.app" />
+
+	</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+	<com.google.android.material.textview.MaterialTextView
+		android:id="@+id/materialTextView"
+		style="@style/TextAppearance.Material3.TitleLarge"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="16dp"
+		android:text="Select Language"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/package_name" />
+
+	<com.google.android.material.button.MaterialButtonToggleGroup
+		android:layout_width="350dp"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="10dp"
+		android:paddingHorizontal="5dp"
+		android:background="@drawable/tab_background"
+		app:selectionRequired="true"
+		app:checkedButton="@id/language_option_java"
+		app:singleSelection="false"
+		app:singleLine="true"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/materialTextView">
+
+		<com.google.android.material.button.MaterialButton
+			style="@style/CustomPillButton"
+			android:id="@+id/language_option_java"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:text="Java"
+			android:padding="8dp"
+			app:icon="@drawable/ic_java_32" />
+
+		<com.google.android.material.button.MaterialButton
+			style="@style/CustomPillButton"
+			android:id="@+id/language_option_kotlin"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:text="Kotlin"
+			android:padding="8dp"
+			app:icon="@drawable/ic_kotlin_32" />
+
+		<com.google.android.material.button.MaterialButton
+			style="@style/CustomPillButton"
+			android:id="@+id/language_option_scala"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:text="Scala"
+			android:padding="8dp"
+			app:icon="@drawable/ic_scala_32" />
+
+	</com.google.android.material.button.MaterialButtonToggleGroup>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
