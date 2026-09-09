@@ -204,4 +204,5 @@
 		<attr name="frontLayerDarkenAmount" format="float" />
 	</declare-styleable>
 
+
 </resources>

@@ -3,8 +3,6 @@ package com.deavidig.skecth.project.creator.activities
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.View
@@ -22,6 +20,7 @@ import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.deavidig.mod.deanielig.appcompat.app.ComponentAppCompatActivity
 import com.deavidig.mod.deanielig.backdrop.widget.ComponentBackdropAdapter
+import com.deavidig.mod.deanielig.badge.widget.ComponentBadge
 import com.deavidig.mod.deanielig.search.widget.ComponentSearchBar
 import com.deavidig.mod.deanielig.tooltip.widget.ComponentTooltip
 import com.deavidig.skecth.project.utils.FileUtil
@@ -34,9 +33,6 @@ import com.deavidig.sketchprojectpro.databinding.ActivityProjectCreatorFrontHome
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import java.util.ArrayList
-import java.util.Timer
-import java.util.TimerTask
 
 class ProjectCreatorActivity : ComponentAppCompatActivity() {
 	private lateinit var layout_binding: ActivityProjectCreatorBinding
@@ -75,7 +71,9 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 						.setTitle("Exit Project?")
 						.setMessage("Are you sure you want to exit and cancel creating your new project?")
 						.setNegativeButton("Cancel", null)
-						.setPositiveButton("Exit") { _, _ -> isEnabled = false; onBackPressedDispatcher.onBackPressed() }
+						.setPositiveButton("Exit") { _, _ ->
+							isEnabled = false; onBackPressedDispatcher.onBackPressed()
+						}
 						.show()
 				}
 			}
@@ -86,7 +84,8 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 		finish()
 	}
 
-	public class ComponentBackDropFragment(activity: AppCompatActivity) : ComponentBackdropAdapter.Companion.ComponentBaseBackdropAdapter(activity) {
+	public class ComponentBackDropFragment(activity: AppCompatActivity) :
+		ComponentBackdropAdapter.Companion.ComponentBaseBackdropAdapter(activity) {
 		override fun createBackFragment(): Fragment = ModulesFragment()
 
 		override fun createFrontFragment(): Fragment = ContentFragment()
@@ -102,7 +101,11 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 		private val CharSequence.moduleValidate: Boolean
 			get() = matches(MODULE_REGEX)
 
-		private var moduleList = hashMapOf("Phone & Tablets Android" to arrayListOf("app"), "Android Library" to arrayListOf(), "Java or Kotlin Library" to arrayListOf())
+		private var moduleList = hashMapOf(
+			"Phone & Tablets Android" to arrayListOf("app"),
+			"Android Library" to arrayListOf(),
+			"Java or Kotlin Library" to arrayListOf()
+		)
 
 		private var selectedTitle: String = "app"
 
@@ -124,11 +127,13 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 							"Phone & Tablets Android" -> {
 								createMenuItem(item.value[0], -1)
 							}
+
 							"Android Library" -> {
 								item.value.forEach { text ->
 									createMenuItem(text, 0)
 								}
 							}
+
 							"Java or Kotlin Library" -> {
 								item.value.forEach { text ->
 									createMenuItem(text, 1)
@@ -148,7 +153,10 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 			layout_binding = ActivityProjectCreatorBackBinding.inflate(layoutInflater)
 
 			layout_binding.moduleNavigation.setNavigationItemSelectedListener {
-				activity.layout_binding.bar.setSubtitle(it.title!!.toString() + " -" + activity.layout_binding.bar.getSubtitle()!!.toString().substringAfter('-', ""))
+				activity.layout_binding.bar.setSubtitle(
+					it.title!!.toString() + " -" + activity.layout_binding.bar.getSubtitle()!!
+						.toString().substringAfter('-', "")
+				)
 				selectedTitle = it.title.toString().removePrefix(":")
 				true
 			}
@@ -181,13 +189,19 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 				val dialog = MaterialAlertDialogBuilder(requireContext())
 					.setCancelable(false)
 					.setTitle("Set name of your module")
-					.setSingleChoiceItems(arrayOf("Android Library", "Java or Kotlin Library"), 0) { _, choice ->
+					.setSingleChoiceItems(
+						arrayOf("Android Library", "Java or Kotlin Library"),
+						0
+					) { _, choice ->
 						typeChoice = choice
 					}
 					.setView(layout_input_binding.root, 50, 0, 50, 0)
 					.setPositiveButton("Create", null)
 					.setNegativeButton("Cancel", null)
-					.setOnDismissListener { (layout_input_binding.root.parent as FrameLayout).removeAllViews(); layout_input_binding.root.getEditText()!!.setText("") }
+					.setOnDismissListener {
+						(layout_input_binding.root.parent as FrameLayout).removeAllViews(); layout_input_binding.root.getEditText()!!
+						.setText("")
+					}
 					.show()
 
 				layout_input_binding.root.getEditText()!!.doOnTextChanged { text, _, _, _ ->
@@ -224,7 +238,9 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 						layout_input_binding.root.getEditText()!!.requestFocus()
 						return@setOnClickListener
 					}
-					moduleList[if (typeChoice == 0) "Android Library" else "Java or Kotlin Library"]!!.add(text)
+					moduleList[if (typeChoice == 0) "Android Library" else "Java or Kotlin Library"]!!.add(
+						text
+					)
 					createMenuItem(":" + layout_input_binding.root.getText(), typeChoice)
 
 					dialog.dismiss()
@@ -291,34 +307,49 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 		public class ViewPager2Fragment(fragment: Fragment) : FragmentStateAdapter(fragment) {
 			override fun createFragment(p0: Int): Fragment = HomeFragment()
 
-			override fun getItemCount(): Int  = 1
+			override fun getItemCount(): Int = 1
 		}
 
 		public class HomeFragment : Fragment() {
 			private lateinit var layout_binding: ActivityProjectCreatorFrontHomeBinding
 			private val listPrefix: ArrayList<String> = arrayListOf()
 
-			private val DEFAULT_PREFIXES = arrayListOf("com.example", "com.dev", "org.example", "org.dev")
+			private val DEFAULT_PREFIXES =
+				arrayListOf("com.example", "com.dev", "org.example", "org.dev")
 			private val EMPTY_LIST: ArrayList<String> = arrayListOf()
 
-			private val NAME_APPLICATION_REGEX = "[a-zA-Z]([a-zA-Z0-9 ]|\\.([a-zA-Z0-9][ ._+\\-:!?&()]*)+)*".toRegex()
+			private val NAME_APPLICATION_REGEX =
+				"[a-zA-Z]([a-zA-Z0-9 ]|\\.([a-zA-Z0-9][ ._+\\-:!?&()]*)+)*".toRegex()
+
+			private val NAME_PACKAGE_REGEX =
+				"[a-zA-Z]([a-zA-Z0-9\\- ]|\\.([a-zA-Z0-9][a-zA-Z0-9\\- ]*)+)*".toRegex()
 
 			override fun onStart() {
 				super.onStart()
 				reloadListPrefix()
 			}
 
-			override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View = layout_binding.root
+			override fun onCreateView(
+				inflater: LayoutInflater,
+				container: ViewGroup?,
+				savedInstanceState: Bundle?
+			): View = layout_binding.root
 
 			override fun onCreate(savedInstanceState: Bundle?) {
 				super.onCreate(savedInstanceState)
 
 				layout_binding = ActivityProjectCreatorFrontHomeBinding.inflate(layoutInflater)
 
-				if (!FileUtil.isFile(FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json")) FileUtil.writeFile(FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json", "[\"com.example\", \"com.dev\", \"org.example\", \"org.dev\"]")
+				if (!FileUtil.isFile(FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json")) FileUtil.writeFile(
+					FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json",
+					"[\"com.example\", \"com.dev\", \"org.example\", \"org.dev\"]"
+				)
 
 				layout_binding.packageName.setPrefixEnabled(true)
 
+				ComponentBadge(requireContext())
+					.setText("Experimental")
+					.show(layout_binding.languageOptionScala)
 
 				layout_binding.packageName.setStartImageOnLongClickListener {
 					ComponentTooltip(it)
@@ -335,20 +366,53 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 				}
 
 				layout_binding.packageName.setEndLayoutOnClickListener {
-					startActivity(Intent(requireContext(), ProjectModulesCreatorActivity::class.java))
+					startActivity(
+						Intent(
+							requireContext(),
+							ProjectModulesCreatorActivity::class.java
+						)
+					)
 				}
 
 				layout_binding.applicationName.getEditText()?.doOnTextChanged { text, _, _, _ ->
 					if (!text!!.matches(NAME_APPLICATION_REGEX)) {
 						layout_binding.applicationName.setErrorEnabled(true)
 						layout_binding.applicationName.setErrorText("The Application Name contains invalid characters.")
-						(requireActivity() as ProjectCreatorActivity).layout_binding.bar.getRightMenu()?.get(0)?.isEnabled = false
+						(requireActivity() as ProjectCreatorActivity).layout_binding.bar.getRightMenu()
+							?.get(0)?.isEnabled = false
 						return@doOnTextChanged
 					}
-					(requireActivity() as ProjectCreatorActivity).layout_binding.bar.getRightMenu()?.get(0)?.isEnabled = true
+					(requireActivity() as ProjectCreatorActivity).layout_binding.bar.getRightMenu()
+						?.get(0)?.isEnabled = true
 
-					val nameText = text.replace(" +".toRegex(), ".").lowercase()
+					val nameText = text.trim().replace(" +".toRegex(), ".").lowercase()
 					layout_binding.packageName.getEditText()?.setText(nameText)
+				}
+
+				layout_binding.packageName.getEditText()?.doOnTextChanged { text, _, _, _ ->
+					if (!text!!.matches(NAME_PACKAGE_REGEX)) {
+						layout_binding.packageName.setErrorEnabled(true)
+						layout_binding.packageName.setErrorText("The Application Name contains invalid characters.")
+						(requireActivity() as ProjectCreatorActivity).layout_binding.bar.getRightMenu()
+							?.get(0)?.isEnabled = false
+						return@doOnTextChanged
+					}
+					(requireActivity() as ProjectCreatorActivity).layout_binding.bar.getRightMenu()
+						?.get(0)?.isEnabled = true
+				}
+
+				layout_binding.languageOptionScala.setOnClickListener {
+
+					if (layout_binding.languageOptionScala.isChecked) {
+						MaterialAlertDialogBuilder(requireContext())
+							.setTitle("Scala Language Option.")
+							.setMessage("You select Scala as the project's build, are you sure you want to take the risk that comes with using Scala?")
+							.setPositiveButton("Accept", null)
+							.setNegativeButton("Cancel") { _, _ ->
+								layout_binding.languageOptionScala.isChecked = false
+							}
+							.show()
+					}
 				}
 
 				reloadListPrefix()
@@ -356,11 +420,15 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 
 			fun reloadListPrefix() {
 				listPrefix.clear()
-				listPrefix.addAll(try {
-					(Gson().fromJson<ArrayList<String>>(FileUtil.readFile(FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json"), object : TypeToken<ArrayList<String>>() {}.type) ?: EMPTY_LIST).ifEmpty { DEFAULT_PREFIXES }
-				} catch (_: Exception) {
-					DEFAULT_PREFIXES
-				})
+				listPrefix.addAll(
+					try {
+						(Gson().fromJson<ArrayList<String>>(
+							FileUtil.readFile(FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json"),
+							object : TypeToken<ArrayList<String>>() {}.type
+						) ?: EMPTY_LIST).ifEmpty { DEFAULT_PREFIXES }
+					} catch (_: Exception) {
+						DEFAULT_PREFIXES
+					})
 				layout_binding.packageName.setPrefixTextList(listPrefix)
 			}
 		}
