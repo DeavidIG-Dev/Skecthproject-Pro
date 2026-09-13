@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent">
+
+	<com.google.android.material.tabs.TabLayout
+		android:id="@+id/tab_filter"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent">
+
+		<com.google.android.material.tabs.TabItem
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Android" />
+
+		<com.google.android.material.tabs.TabItem
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Gradle" />
+
+	</com.google.android.material.tabs.TabLayout>
+
+	<ViewFlipper
+		android:id="@+id/pager_filter"
+		android:layout_width="0dp"
+		android:layout_height="0dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/tab_filter">
+
+		<androidx.core.widget.NestedScrollView
+			android:layout_width="match_parent"
+			android:layout_height="match_parent">
+
+			<androidx.constraintlayout.widget.ConstraintLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:clipToPadding="false"
+				android:padding="8dp">
+
+				<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+					android:id="@+id/name_application_suffix_box"
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_marginTop="10dp"
+					app:dividerEnable="false"
+					app:hintCutoutBackgroundColor="?attr/colorSurface"
+					app:hintEnable="true"
+					app:hintFormat="in"
+					app:hintText="Name Application Suffix"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toTopOf="parent"
+					app:placeholderEnable="true"
+					app:placeholderText="Beta">
+
+					<AutoCompleteTextView
+						android:id="@+id/name_application_suffix"
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:completionThreshold="1"
+						android:nextFocusDown="@id/version_code"
+						android:singleLine="true"
+						app:layout_constraintBottom_toBottomOf="parent"
+						app:layout_constraintRight_toRightOf="parent"
+						app:layout_constraintStart_toStartOf="parent"
+						app:layout_constraintTop_toTopOf="parent" />
+
+				</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+				<LinearLayout
+					android:id="@+id/versions_type_container"
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:layout_marginTop="10dp"
+					android:padding="0dp"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@+id/name_application_suffix_box">
+
+					<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+						android:id="@+id/version_code_box"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_marginEnd="2.5dp"
+						android:layout_weight="1"
+						app:hintCutoutBackgroundColor="?attr/colorSurface"
+						app:hintEnable="true"
+						app:hintFormat="in"
+						app:hintText="Version Code"
+						app:placeholderEnable="true"
+						app:placeholderText="1">
+
+						<com.google.android.material.textfield.TextInputEditText
+							android:id="@+id/version_code"
+							android:layout_width="match_parent"
+							android:layout_height="match_parent"
+							android:singleLine="true"
+							android:text="1"
+							app:layout_constraintBottom_toBottomOf="parent"
+							app:layout_constraintRight_toRightOf="parent"
+							app:layout_constraintStart_toStartOf="parent"
+							app:layout_constraintTop_toTopOf="parent" />
+
+					</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+					<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+						android:id="@+id/version_name_box"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_marginStart="2.5dp"
+						android:layout_weight="1"
+						app:hintCutoutBackgroundColor="?attr/colorSurface"
+						app:hintEnable="true"
+						app:hintFormat="in"
+						app:hintText="Version Name"
+						app:placeholderEnable="true"
+						app:placeholderText="v1.0">
+
+						<com.google.android.material.textfield.TextInputEditText
+							android:id="@+id/version_name"
+							android:layout_width="match_parent"
+							android:layout_height="match_parent"
+							android:singleLine="true"
+							android:text="1.0"
+							app:layout_constraintBottom_toBottomOf="parent"
+							app:layout_constraintRight_toRightOf="parent"
+							app:layout_constraintStart_toStartOf="parent"
+							app:layout_constraintTop_toTopOf="parent" />
+
+					</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+				</LinearLayout>
+
+				<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
+					android:id="@+id/divider_subsection_one"
+					android:layout_width="0dp"
+					android:layout_height="2dp"
+					android:layout_marginTop="10dp"
+					app:dividerColor="?attr/colorOutlineVariant"
+					app:dividerInsetEnd="16dp"
+					app:dividerInsetStart="16dp"
+					app:dividerRadiusSize="16dp"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/versions_type_container"
+					tools:layout_editor_absoluteY="8dp" />
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/android_version_title"
+					style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginTop="10dp"
+					android:text="Android Versions"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/divider_subsection_one" />
+
+				<com.google.android.material.slider.RangeSlider
+					android:id="@+id/android_version"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:stepSize="1"
+					android:valueFrom="0"
+					android:valueTo="20"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@+id/android_version_title"
+					app:thumbHeight="16dp"
+					app:thumbTrackGapSize="0dp"
+					app:thumbWidth="16dp"
+					app:tickColorActive="@android:color/transparent"
+					app:values="@array/android_version_selected" />
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/android_version_message"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Min SDK: API 24 - Target SDK: API 35"
+					android:textColor="@android:color/darker_gray"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/android_version" />
+
+			</androidx.constraintlayout.widget.ConstraintLayout>
+
+		</androidx.core.widget.NestedScrollView>
+
+		<androidx.core.widget.NestedScrollView
+			android:layout_width="match_parent"
+			android:layout_height="match_parent">
+
+			<androidx.constraintlayout.widget.ConstraintLayout
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:clipToPadding="false"
+				android:padding="8dp">
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/gradle_option_title"
+					style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginTop="10dp"
+					android:text="Gradle Versions"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toTopOf="parent" />
+
+				<com.google.android.material.tabs.TabLayout
+					android:id="@+id/gradle_option"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:layout_marginHorizontal="5dp"
+					android:layout_marginTop="10dp"
+					android:background="@drawable/tab_background"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@+id/gradle_option_title"
+					app:tabIconTint="@color/tab_icon_m3_selector"
+					app:tabIndicator="@drawable/tab_indicator_background"
+					app:tabIndicatorAnimationDuration="750"
+					app:tabIndicatorAnimationMode="elastic"
+					app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
+					app:tabIndicatorFullWidth="false"
+					app:tabIndicatorGravity="stretch"
+					app:tabInlineLabel="true"
+					app:tabMinWidth="56dp"
+					app:tabRippleColor="@null"
+					app:tabTextColor="@color/tab_icon_m3_selector">
+
+					<com.google.android.material.tabs.TabItem
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:icon="@drawable/ic_gradle_32"
+						android:text="Gradle" />
+
+					<com.google.android.material.tabs.TabItem
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:icon="@drawable/ic_kotlin_32"
+						android:text="Kotlin" />
+
+				</com.google.android.material.tabs.TabLayout>
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/java_options_title"
+					style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginTop="10dp"
+					android:text="Java Versions"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/gradle_option" />
+
+				<com.google.android.material.tabs.TabLayout
+					android:id="@+id/language_option"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:layout_marginHorizontal="5dp"
+					android:layout_marginTop="10dp"
+					android:background="@drawable/tab_background"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@+id/java_options_title"
+					app:tabIconTint="@color/tab_icon_m3_selector"
+					app:tabIndicator="@drawable/tab_indicator_background"
+					app:tabIndicatorAnimationDuration="750"
+					app:tabIndicatorAnimationMode="elastic"
+					app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
+					app:tabIndicatorFullWidth="false"
+					app:tabIndicatorGravity="stretch"
+					app:tabInlineLabel="true"
+					app:tabMinWidth="56dp"
+					app:tabRippleColor="@null"
+					app:tabTextColor="@color/tab_icon_m3_selector">
+
+					<com.google.android.material.tabs.TabItem
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:icon="@drawable/ic_java_32"
+						android:text="11" />
+
+					<com.google.android.material.tabs.TabItem
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:icon="@drawable/ic_java_32"
+						android:text="17" />
+
+					<com.google.android.material.tabs.TabItem
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:icon="@drawable/ic_java_32"
+						android:text="21" />
+
+				</com.google.android.material.tabs.TabLayout>
+
+				<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
+					android:id="@+id/divider_subsection_two"
+					android:layout_width="0dp"
+					android:layout_height="2dp"
+					android:layout_marginTop="10dp"
+					app:dividerColor="?attr/colorOutlineVariant"
+					app:dividerInsetEnd="16dp"
+					app:dividerInsetStart="16dp"
+					app:dividerRadiusSize="16dp"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/language_option"
+					tools:layout_editor_absoluteY="8dp" />
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/dependency_list_title"
+					style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_marginTop="10dp"
+					android:text="Dependencies"
+					app:layout_constraintEnd_toStartOf="@+id/material_button_with_icon"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/divider_subsection_two" />
+
+				<com.deavidig.mod.deanielig.iconbutton.widget.ComponentIconButton
+					android:id="@+id/material_button_with_icon"
+					android:layout_width="wrap_content"
+					android:layout_height="0dp"
+					android:layout_marginTop="10dp"
+					app:fillColor="@android:color/transparent"
+					app:icon="@drawable/ic_add_24"
+					app:iconSize="44dp"
+					app:iconTint="?android:attr/textColorPrimary"
+					app:layout_constraintBottom_toBottomOf="@+id/dependency_list_title"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintTop_toBottomOf="@+id/divider_subsection_two" />
+
+				<androidx.recyclerview.widget.RecyclerView
+					android:id="@+id/dependency_list"
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					app:layout_constraintBottom_toBottomOf="parent"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/dependency_list_title"
+					tools:itemCount="3"
+					tools:listitem="@layout/activity_project_creator_recyclerview_dependency" />
+
+			</androidx.constraintlayout.widget.ConstraintLayout>
+
+		</androidx.core.widget.NestedScrollView>
+
+	</ViewFlipper>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

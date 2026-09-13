@@ -15,6 +15,9 @@ import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import androidx.annotation.ColorInt
 import androidx.annotation.Px
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import com.deavidig.mod.deanielig.badge.widget.ComponentBadge.Companion.DEFAULT_BACKGROUND_COLOR
 import com.deavidig.mod.deanielig.badge.widget.ComponentBadge.Companion.NO_MAX_LENGTH
 import java.lang.ref.WeakReference
@@ -47,13 +50,54 @@ import java.lang.ref.WeakReference
  * ### Lifecycle
  * A single [ComponentBadge] instance is meant to track a single anchor at a
  * time. Calling [show] again with a different anchor moves the same pill.
- * [hide] keeps the pill attached but invisible (cheap to bring back),
- * while [remove] fully detaches it and tears down all listeners — call it
- * from `onDestroyView`/`onDetachedFromWindow` if the anchor's lifecycle can
- * outlive the badge's usefulness.
+ * [hide] keeps the pill attached but invisible (cheap to bring back).
  *
- * @param context Any context; the Activity window is resolved lazily from
- * it (or from the anchor's `rootView` as a fallback) when [show] is called.
+ * The anchor detaching from its window (e.g. scrolled off-screen in a
+ * `RecyclerView`/`ViewPager2`) is treated the same way internally: the pill
+ * is hidden, but every listener stays alive so it reappears on its own the
+ * moment the anchor reattaches — no need to call [show] again just because
+ * the anchor scrolled away and came back. [remove] is the one that actually
+ * tears everything down (listeners, tracked anchor, the pill itself); call
+ * it explicitly once the anchor is gone for good, or use the
+ * [LifecycleOwner]-aware [show] overload below to have that happen
+ * automatically.
+ *
+ * ### Fragment / ViewPager2 usage
+ * [show] has an overload that takes a [LifecycleOwner]. Pass the Fragment's
+ * `viewLifecycleOwner` (never the Fragment itself) so [remove] is called
+ * automatically on `Lifecycle.Event.ON_DESTROY` — i.e. when that Fragment's
+ * *view* is genuinely destroyed (rotation, back-stack pop, the page falling
+ * outside `ViewPager2`'s offscreen limit), as opposed to merely scrolling
+ * off-screen, which — per the note above — is not torn down automatically:
+ *
+ * ```kotlin
+ * ComponentBadge(requireContext())
+ *     .setText("3")
+ *     .show(binding.tabIcon, viewLifecycleOwner)
+ * ```
+ *
+ * Without a [LifecycleOwner], plain `View`-only callers are still expected
+ * to call [remove] themselves once the anchor is truly done with (e.g. from
+ * `onDestroyView`), since nothing else will do it for them.
+ *
+ * The pill also repositions on every draw pass of the anchor's view tree
+ * (not just on layout/scroll), because `ViewPager2` slides pages via
+ * `translationX` during the swipe gesture and its settle animation — a
+ * pure transform that does **not** trigger `OnGlobalLayoutListener` or
+ * `OnScrollChangedListener`. Without this the pill would freeze mid-swipe
+ * and only "catch up" to the anchor once the page fully settles.
+ *
+ * [remove] defers its actual `removeView` call to the next message-loop
+ * iteration rather than running it synchronously. Whatever triggers
+ * [remove] — a `Lifecycle` callback, a caller's own code — can end up
+ * running while some ancestor `ViewGroup` is mid-layout/draw; removing a
+ * child synchronously from inside that would corrupt its children array
+ * mid-iteration (a classic `FrameLayout.layoutChildren` NPE).
+ *
+ * @param context Any context; the window hosting the anchor is resolved
+ * lazily (preferring the anchor's own window — important for `DialogFragment`
+ * / `BottomSheetDialogFragment` — falling back to the Activity decor view)
+ * when [show] is called.
  */
 class ComponentBadge(private val context: Context) {
 
@@ -105,6 +149,28 @@ class ComponentBadge(private val context: Context) {
 	private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
 	private var scrollListener: ViewTreeObserver.OnScrollChangedListener? = null
 	private var attachStateListener: View.OnAttachStateChangeListener? = null
+
+	/**
+	 * Fires on every draw pass of the anchor's view tree. This is what keeps
+	 * the pill glued to the anchor while a `ViewPager2` page is mid-swipe or
+	 * settling, since that motion is a `translationX` transform rather than
+	 * a layout/scroll event. See the class-level "Fragment / ViewPager2
+	 * usage" doc for the full rationale.
+	 */
+	private var drawListener: ViewTreeObserver.OnDrawListener? = null
+
+	/** Explicit user intent set via [hide]; distinct from the transient
+	 *  "not yet positioned" invisibility applied right after [show]. */
+	private var userHidden: Boolean = false
+
+	/** Whether [repositionBadge] has successfully placed the pill at least
+	 *  once since the last [show] — used to avoid a visible flash/jump at
+	 *  (0,0) before the anchor's real position is known (common the first
+	 *  frame a `ViewPager2` page's Fragment view is created). */
+	private var hasBeenPositioned: Boolean = false
+
+	private var lifecycleOwnerRef: WeakReference<LifecycleOwner>? = null
+	private var lifecycleObserver: LifecycleEventObserver? = null
 
 	// ---- Public fluent API ----------------------------------------------
 
@@ -193,9 +259,11 @@ class ComponentBadge(private val context: Context) {
 	/**
 	 * Attaches (or moves) the badge pill so it floats over [anchor]'s
 	 * configured corner, and starts tracking [anchor]'s position across
-	 * layout passes, scrolls, and re-parenting.
+	 * layout passes, scrolls, draw frames (covers `ViewPager2` swipe
+	 * animation), and re-parenting.
 	 */
 	fun show(anchor: View): ComponentBadge = apply {
+		detachLifecycleObserver()
 		detachWatchers()
 
 		anchorRef = WeakReference(anchor)
@@ -209,7 +277,14 @@ class ComponentBadge(private val context: Context) {
 		view.setMinSizeDp(minSizeDp)
 		view.elevation = elevationPx
 		view.setLabel(resolveDisplayText())
-		view.visibility = View.VISIBLE
+
+		userHidden = false
+		hasBeenPositioned = false
+		// Stay invisible until the first successful reposition so the pill
+		// never flashes at (0,0) — this matters most the first frame a
+		// ViewPager2 page's Fragment view is created, before its anchor has
+		// a real position yet.
+		view.visibility = View.INVISIBLE
 
 		when {
 			view.parent == null ->
@@ -237,19 +312,56 @@ class ComponentBadge(private val context: Context) {
 		repositionBadge(anchor, root)
 	}
 
+	/**
+	 * Same as [show], but also ties the badge's teardown to [lifecycleOwner]:
+	 * [remove] is called automatically on `Lifecycle.Event.ON_DESTROY`.
+	 *
+	 * In a Fragment, pass `viewLifecycleOwner` — **not** the Fragment itself.
+	 * This is the recommended overload when the anchor lives inside a
+	 * `ViewPager2` page, a `DialogFragment`, or anywhere else the view can be
+	 * torn down and recreated independently of the surrounding Activity, since
+	 * it guarantees cleanup even in reordering/recycling edge cases where the
+	 * anchor's own `onDetachedFromWindow` might fire later than expected.
+	 */
+	fun show(anchor: View, lifecycleOwner: LifecycleOwner): ComponentBadge = apply {
+		show(anchor)
+		attachLifecycleObserver(lifecycleOwner)
+	}
+
 	/** Hides the pill without tearing down its listeners; cheap to [show] again. */
 	fun hide() {
+		userHidden = true
 		badgeView?.visibility = View.GONE
 	}
 
 	/** Fully detaches the pill from the window and stops tracking the anchor. */
 	fun remove() {
 		detachWatchers()
+		detachLifecycleObserver()
 		val view = badgeView ?: return
-		(view.parent as? ViewGroup)?.removeView(view)
+		val parent = view.parent as? ViewGroup
 		badgeView = null
 		overlayRoot = null
 		anchorRef = null
+		hasBeenPositioned = false
+
+		if (parent != null) {
+			// remove() can be reached from a Lifecycle callback (the
+			// show(anchor, lifecycleOwner) overload's ON_DESTROY hook) or
+			// directly from caller code, either of which can end up running
+			// while some ancestor ViewGroup is mid-layout/draw. Calling
+			// parent.removeView(view) synchronously from in there mutates the
+			// parent's children array while it's still being iterated (e.g.
+			// FrameLayout.layoutChildren()), corrupting it and crashing with
+			// an NPE on child.getVisibility(). Posting defers the actual
+			// detach to the next message-loop iteration, safely outside any
+			// in-progress traversal. The `view.parent === parent` guard is
+			// just a safety net in case something else already detached the
+			// view by the time this runs.
+			parent.post {
+				if (view.parent === parent) parent.removeView(view)
+			}
+		}
 	}
 
 	/** Whether the pill is currently attached to the window and visible. */
@@ -278,6 +390,12 @@ class ComponentBadge(private val context: Context) {
 	}
 
 	private fun resolveOverlayRoot(anchor: View): ViewGroup {
+		// Prefer the window that actually hosts the anchor when it's already
+		// attached — matters for DialogFragment / BottomSheetDialogFragment,
+		// which live in their own Window, distinct from the host Activity's.
+		if (anchor.isAttachedToWindow) {
+			(anchor.rootView as? ViewGroup)?.let { return it }
+		}
 		val decorView = context.findActivity()?.window?.decorView as? ViewGroup
 		return decorView ?: anchor.rootView as? ViewGroup
 		?: throw IllegalStateException("ComponentBadge: anchor has no ViewGroup root to attach to.")
@@ -294,9 +412,35 @@ class ComponentBadge(private val context: Context) {
 		observer.addOnScrollChangedListener(onScroll)
 		scrollListener = onScroll
 
+		// Catches transform-only motion (ViewPager2's swipe/settle
+		// translationX) that never fires a layout or scroll event.
+		val onDraw = ViewTreeObserver.OnDrawListener { repositionBadge(anchor, root) }
+		observer.addOnDrawListener(onDraw)
+		drawListener = onDraw
+
 		val onAttachState = object : View.OnAttachStateChangeListener {
 			override fun onViewAttachedToWindow(v: View) = repositionBadge(anchor, root)
-			override fun onViewDetachedFromWindow(v: View) = remove()
+
+			override fun onViewDetachedFromWindow(v: View) {
+				// IMPORTANT: detaching from the window does NOT mean the
+				// anchor is gone for good. RecyclerView/ViewPager2 detach
+				// and reattach the very same View instance constantly as
+				// pages scroll off- and back on-screen — the Fragment/view
+				// is never recreated for adjacent pages. Calling remove()
+				// here would tear down all tracking, and since nothing else
+				// re-triggers show() automatically, the badge would simply
+				// never come back once the page scrolls away and returns.
+				//
+				// So: just hide the pill and leave every listener alive.
+				// The moment onViewAttachedToWindow fires again (page comes
+				// back into view), repositionBadge() below restores it.
+				// Real teardown only happens via an explicit remove() call,
+				// or automatically through the show(anchor, lifecycleOwner)
+				// overload once that Lifecycle genuinely reaches ON_DESTROY
+				// (the view being destroyed for real, not just scrolled
+				// off-screen).
+				badgeView?.visibility = View.INVISIBLE
+			}
 		}
 		anchor.addOnAttachStateChangeListener(onAttachState)
 		attachStateListener = onAttachState
@@ -305,19 +449,33 @@ class ComponentBadge(private val context: Context) {
 	private fun detachWatchers() {
 		val anchor = anchorRef?.get()
 		if (anchor != null) {
-			globalLayoutListener?.let {
-				anchor.viewTreeObserver.takeIf { vto -> vto.isAlive }
-					?.removeOnGlobalLayoutListener(it)
-			}
-			scrollListener?.let {
-				anchor.viewTreeObserver.takeIf { vto -> vto.isAlive }
-					?.removeOnScrollChangedListener(it)
-			}
+			val vto = anchor.viewTreeObserver.takeIf { it.isAlive }
+			globalLayoutListener?.let { vto?.removeOnGlobalLayoutListener(it) }
+			scrollListener?.let { vto?.removeOnScrollChangedListener(it) }
+			drawListener?.let { vto?.removeOnDrawListener(it) }
 			attachStateListener?.let { anchor.removeOnAttachStateChangeListener(it) }
 		}
 		globalLayoutListener = null
 		scrollListener = null
+		drawListener = null
 		attachStateListener = null
+	}
+
+	private fun attachLifecycleObserver(lifecycleOwner: LifecycleOwner) {
+		lifecycleOwnerRef = WeakReference(lifecycleOwner)
+		val observer = LifecycleEventObserver { _, event ->
+			if (event == Lifecycle.Event.ON_DESTROY) remove()
+		}
+		lifecycleOwner.lifecycle.addObserver(observer)
+		lifecycleObserver = observer
+	}
+
+	private fun detachLifecycleObserver() {
+		lifecycleObserver?.let { observer ->
+			lifecycleOwnerRef?.get()?.lifecycle?.removeObserver(observer)
+		}
+		lifecycleObserver = null
+		lifecycleOwnerRef = null
 	}
 
 	private fun repositionBadge(anchor: View, root: ViewGroup) {
@@ -357,6 +515,9 @@ class ComponentBadge(private val context: Context) {
 		lp.leftMargin = (cornerX - badgeWidth / 2f + offsetX).toInt()
 		lp.topMargin = (cornerY - badgeHeight / 2f + offsetY).toInt()
 		badge.layoutParams = lp
+
+		hasBeenPositioned = true
+		if (!userHidden) badge.visibility = View.VISIBLE
 	}
 
 	private fun Context.findActivity(): Activity? {

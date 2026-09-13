@@ -3,15 +3,25 @@
 	xmlns:tools="http://schemas.android.com/tools">
 
 	<!-- Android 6 a 12 (API 23-32): legacy -->
-	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+	<uses-permission
+		android:name="android.permission.READ_EXTERNAL_STORAGE"
+		android:maxSdkVersion="32" />
+	<uses-permission
+		android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+		android:maxSdkVersion="28" />
 
 	<!-- Android 11 y 12 (API 30-32): acceso total a archivos -->
-	<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+	<uses-permission
+		android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+		tools:ignore="AllFilesAccessPolicy,ScopedStorage" />
 
 	<!-- Android 13+ (API 33+): permisos de medios granulares -->
-	<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-	<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+	<uses-permission
+		android:name="android.permission.READ_MEDIA_IMAGES"
+		tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />
+	<uses-permission
+		android:name="android.permission.READ_MEDIA_VIDEO"
+		tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />
 	<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
 	<application
@@ -29,12 +39,14 @@
 			android:name="com.deavidig.skecth.project.creator.activities.ProjectModulesCreatorActivity"
 			android:exported="false"
 			android:screenOrientation="portrait"
+			android:windowSoftInputMode="adjustResize"
 			android:theme="@style/Theme.SketchprojectPro.Activity.Dialog" />
 
 		<activity
 			android:name="com.deavidig.skecth.project.creator.activities.ProjectCreatorActivity"
 			android:exported="false"
 			android:screenOrientation="portrait"
+			android:windowSoftInputMode="adjustResize"
 			android:theme="@style/Theme.SketchprojectPro.Activity.Dialog" />
 
 		<activity

@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 	<array name="android_version_selected">
-		<item>26.0</item>
-		<item>33.0</item>
+		<item>7.0</item>
+		<item>18.0</item>
 	</array>
+	<string-array name="android_application_prefix">
+		<item>Pre-Alpha</item>
+		<item>Alpha</item>
+		<item>Beta</item>
+		<item>Release</item>
+		<item>Release Candidate</item>
+		<item>Stable Release</item>
+		<item>General Availability</item>
+	</string-array>
 </resources>

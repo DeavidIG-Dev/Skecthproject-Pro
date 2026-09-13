@@ -6,13 +6,13 @@ import android.util.TypedValue
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.core.os.persistableBundleOf
+import androidx.collection.ArraySet
 import androidx.core.widget.doOnTextChanged
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.deavidig.mod.deanielig.appcompat.app.ComponentAppCompatActivity
+import com.deavidig.mod.deanielig.kotlin.toArrayList
 import com.deavidig.skecth.project.utils.FileUtil
 import com.deavidig.sketchprojectpro.R
 import com.deavidig.sketchprojectpro.databinding.ActivityProjectModulesCreatorBinding
@@ -50,16 +50,18 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 
-		modulesList = gson.fromJson(
-			FileUtil.readFile(
-				FileUtil.externalStorageDir +
-						FileUtil.separator +
-						"Sketchproject Pro" +
-						FileUtil.separator +
-						"prefix.json"
-			),
-			object : TypeToken<ArrayList<String>>() {}.type
-		)
+		modulesList = ArraySet(
+			gson.fromJson<ArrayList<String>>(
+				FileUtil.readFile(
+					FileUtil.externalStorageDir +
+							FileUtil.separator +
+							"Sketchproject Pro" +
+							FileUtil.separator +
+							"prefix.json"
+				),
+				object : TypeToken<ArrayList<String>>() {}.type
+			)
+		).toArrayList()
 
 		layout_binding = ActivityProjectModulesCreatorBinding.inflate(layoutInflater)
 		input_binding = ActivityProjectModulesCreatorDialogInputBinding.inflate(layoutInflater)
@@ -78,11 +80,15 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 					val text = input_binding.root.getEditText()!!.text.toString()
 					if (text.validatePrefix) {
 						modulesList.add(text)
-						layout_binding.listName.adapter?.notifyItemRangeChanged(modulesList.size - 2, 1)
+						layout_binding.listName.adapter?.notifyItemRangeChanged(
+							modulesList.size - 2,
+							1
+						)
 					}
 				}
 				.setOnDismissListener {
-					input_binding = ActivityProjectModulesCreatorDialogInputBinding.inflate(layoutInflater)
+					input_binding =
+						ActivityProjectModulesCreatorDialogInputBinding.inflate(layoutInflater)
 				}
 				.setView(input_binding.root, 50, 0, 50, 0)
 				.show()
@@ -97,9 +103,12 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 			}
 		}
 
-		layout_binding.listName.adapter = ProjectModulesCreatorRecyclerViewAdapter(this)
+		layout_binding.listName.adapter = ProjectModulesCreatorRecyclerViewAdapter(modulesList)
 
-		ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
+		ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+			ItemTouchHelper.UP or ItemTouchHelper.DOWN,
+			ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+		) {
 			val adapter = layout_binding.listName.adapter!!
 
 			override fun onMove(
@@ -113,7 +122,10 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 				Collections.swap(modulesList, fromPosition, toPosition)
 
 				adapter.notifyItemMoved(fromPosition, toPosition)
-				adapter.notifyItemRangeChanged(if (fromPosition < toPosition) fromPosition else toPosition, modulesList.size)
+				adapter.notifyItemRangeChanged(
+					0,
+					modulesList.size
+				)
 
 				return true
 			}
@@ -134,21 +146,36 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 
 	override fun onBackPressed() {
 		super.onBackPressed()
-		FileUtil.writeFile(FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json", gson.toJson(modulesList))
+		FileUtil.writeFile(
+			FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json",
+			gson.toJson(modulesList)
+		)
 	}
 
-	private class ProjectModulesCreatorRecyclerViewAdapter(private val activity: ProjectModulesCreatorActivity) : RecyclerView.Adapter<ProjectModulesCreatorRecyclerViewAdapter.ProjectModulesCreatorRecyclerViewAdapterModuleHolder>() {
+	private class ProjectModulesCreatorRecyclerViewAdapter(private val list: ArrayList<String>) :
+		RecyclerView.Adapter<ProjectModulesCreatorRecyclerViewAdapter.ProjectModulesCreatorRecyclerViewAdapterModuleHolder>() {
 
 		private lateinit var input_binding: ActivityProjectModulesCreatorDialogInputBinding
 		private lateinit var layoutInflater: LayoutInflater
 
 		private fun Int.toDP(context: Context): Int =
-			TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, this.toFloat(), context.resources.displayMetrics).toInt()
+			TypedValue.applyDimension(
+				TypedValue.COMPLEX_UNIT_DIP,
+				this.toFloat(),
+				context.resources.displayMetrics
+			).toInt()
 
-		override fun onCreateViewHolder(container: ViewGroup, type: Int): ProjectModulesCreatorRecyclerViewAdapterModuleHolder {
+		override fun onCreateViewHolder(
+			container: ViewGroup,
+			type: Int
+		): ProjectModulesCreatorRecyclerViewAdapterModuleHolder {
 			layoutInflater = LayoutInflater.from(container.context)
 
-			val binding = ActivityProjectModulesCreatorRecyclerviewModuleBinding.inflate(layoutInflater, container, false)
+			val binding = ActivityProjectModulesCreatorRecyclerviewModuleBinding.inflate(
+				layoutInflater,
+				container,
+				false
+			)
 			input_binding = ActivityProjectModulesCreatorDialogInputBinding.inflate(layoutInflater)
 
 			(binding.root.layoutParams as ViewGroup.MarginLayoutParams).apply {
@@ -160,30 +187,42 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 			return ProjectModulesCreatorRecyclerViewAdapterModuleHolder(binding)
 		}
 
-		override fun onBindViewHolder(holder: ProjectModulesCreatorRecyclerViewAdapterModuleHolder, position: Int) {
-			holder.binding.titleProject.text = activity.modulesList[position]
+		override fun onBindViewHolder(
+			holder: ProjectModulesCreatorRecyclerViewAdapterModuleHolder,
+			position: Int
+		) {
+			holder.binding.titleProject.text = list[position]
 
-			holder.binding.root.setBackgroundResource(when {
-				activity.modulesList.size == 1 -> R.drawable.bg_project_single
-				position == 0 -> R.drawable.bg_project_top
-				position == activity.modulesList.size - 1 -> R.drawable.bg_project_bottom
-				else -> R.drawable.bg_project_middle
-			})
+			holder.binding.root.setBackgroundResource(
+				when {
+					list.size == 1 -> R.drawable.bg_project_single
+					position == 0 -> R.drawable.bg_project_top
+					position == list.size - 1 -> R.drawable.bg_project_bottom
+					else -> R.drawable.bg_project_middle
+				}
+			)
 
 			holder.binding.optionsProject.setOnClickListener {
+
 				input_binding.root.getEditText()!!.setText(holder.binding.titleProject.text)
-				MaterialAlertDialogBuilder(ContextThemeWrapper(input_binding.root.context, com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar)).setTitle("Name of Namespace")
+				MaterialAlertDialogBuilder(
+					ContextThemeWrapper(
+						input_binding.root.context,
+						com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar
+					)
+				).setTitle("Name of Namespace")
 					.setMessage("Create a custom Namespace for your projects.")
 					.setNegativeButton("Cancel", null)
 					.setPositiveButton("Accept") { _, _ ->
 						val text = input_binding.root.getEditText()!!.text.toString()
 						if (text.validatePrefix) {
 							holder.binding.titleProject.text = text
-							activity.modulesList[position] = text
+							list[position] = text
 						}
 					}
 					.setOnDismissListener {
-						input_binding = ActivityProjectModulesCreatorDialogInputBinding.inflate(layoutInflater)
+						input_binding =
+							ActivityProjectModulesCreatorDialogInputBinding.inflate(layoutInflater)
 					}
 					.setView(input_binding.root, 50, 0, 50, 0)
 					.setCancelable(false)
@@ -191,8 +230,9 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 			}
 		}
 
-		override fun getItemCount(): Int = activity.modulesList.size
+		override fun getItemCount(): Int = list.size
 
-		class ProjectModulesCreatorRecyclerViewAdapterModuleHolder(val binding: ActivityProjectModulesCreatorRecyclerviewModuleBinding) : RecyclerView.ViewHolder(binding.root)
+		class ProjectModulesCreatorRecyclerViewAdapterModuleHolder(val binding: ActivityProjectModulesCreatorRecyclerviewModuleBinding) :
+			RecyclerView.ViewHolder(binding.root)
 	}
 }

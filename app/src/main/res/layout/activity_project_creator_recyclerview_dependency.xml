@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:background="@drawable/bg_project_single"
+	android:paddingVertical="8dp">
+
+	<com.google.android.material.imageview.ShapeableImageView
+		android:id="@+id/shapeableImageView"
+		android:layout_width="40dp"
+		android:layout_height="40dp"
+		android:layout_marginStart="10dp"
+		android:src="@mipmap/ic_launcher_round"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		app:shapeAppearance="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded" />
+
+	<TextView
+		android:id="@+id/name_dependency"
+		style="@style/TextAppearance.Material3.TitleMedium"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="5dp"
+		android:text="Gson"
+		android:textColor="?android:attr/textColorPrimary"
+		app:layout_constraintEnd_toStartOf="@+id/divider"
+		app:layout_constraintStart_toEndOf="@+id/shapeableImageView"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<TextView
+		android:id="@+id/group_dependency"
+		style="@style/TextAppearance.Material3.TitleSmall"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="5dp"
+		android:text="com.google.code.gson - 2.14.0"
+		android:textColor="@android:color/darker_gray"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toStartOf="@+id/divider"
+		app:layout_constraintStart_toEndOf="@+id/shapeableImageView"
+		app:layout_constraintTop_toBottomOf="@+id/name_dependency" />
+
+	<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
+		android:id="@+id/divider"
+		android:layout_width="1.5dp"
+		android:layout_height="0dp"
+		android:layout_marginEnd="7.5dp"
+		app:dividerColor="?attr/colorSurfaceContainerHigh"
+		app:dividerRadiusSize="16dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toStartOf="@+id/options_project"
+		app:layout_constraintTop_toTopOf="parent" />
+
+	<androidx.constraintlayout.utils.widget.ImageFilterButton
+		android:id="@+id/options_project"
+		android:layout_width="wrap_content"
+		android:layout_height="0dp"
+		android:layout_marginEnd="10dp"
+		android:background="@android:color/transparent"
+		android:src="@drawable/ic_more_vert_24"
+		android:tint="?attr/colorSurfaceContainerHighest"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

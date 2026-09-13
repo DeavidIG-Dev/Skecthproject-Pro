@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	app:layout_constraintBottom_toBottomOf="parent"
+	app:layout_constraintEnd_toEndOf="parent"
+	app:layout_constraintStart_toStartOf="parent"
+	app:layout_constraintTop_toTopOf="parent">
+
+	<androidx.constraintlayout.widget.ConstraintLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="10dp"
+		android:clipToPadding="false"
+		android:paddingBottom="10dp">
+
+		<!-- colorSurfaceContainer -->
+
+		<androidx.cardview.widget.CardView
+			android:id="@+id/android_cardview"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_marginHorizontal="10dp"
+			app:cardBackgroundColor="?attr/colorSurfaceContainer"
+			app:cardCornerRadius="16dp"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toTopOf="parent">
+
+			<androidx.constraintlayout.widget.ConstraintLayout
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:padding="8dp">
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/android_title_cardview"
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_marginHorizontal="10dp"
+					android:text="Android Configuration"
+					android:textSize="26sp"
+					app:fontFamily="sans-serif-black"
+					android:textAlignment="center"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toTopOf="parent" />
+
+				<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+					android:id="@+id/name_application_suffix"
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_marginTop="10dp"
+					app:hintCutoutBackgroundColor="?attr/colorSurfaceContainer"
+					app:hintEnable="true"
+					app:hintFormat="in"
+					app:hintText="Name Application Suffix"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/android_title_cardview"
+					app:placeholderEnable="true"
+					app:placeholderText="Beta">
+
+					<com.google.android.material.textfield.TextInputEditText
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:singleLine="true"
+						app:layout_constraintBottom_toBottomOf="parent"
+						app:layout_constraintRight_toRightOf="parent"
+						app:layout_constraintStart_toStartOf="parent"
+						app:layout_constraintTop_toTopOf="parent" />
+
+				</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+				<LinearLayout
+					android:id="@+id/versions_type_container"
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:layout_marginTop="10dp"
+					android:padding="0dp"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@+id/name_application_suffix">
+
+					<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+						android:id="@+id/code_name"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_marginEnd="2.5dp"
+						android:layout_weight="1"
+						app:hintCutoutBackgroundColor="?attr/colorSurfaceContainer"
+						app:hintEnable="true"
+						app:hintFormat="in"
+						app:hintText="Code Name"
+						app:placeholderEnable="true"
+						app:placeholderText="1">
+
+						<com.google.android.material.textfield.TextInputEditText
+							android:layout_width="match_parent"
+							android:layout_height="match_parent"
+							android:singleLine="true"
+							android:text="1"
+							app:layout_constraintBottom_toBottomOf="parent"
+							app:layout_constraintRight_toRightOf="parent"
+							app:layout_constraintStart_toStartOf="parent"
+							app:layout_constraintTop_toTopOf="parent" />
+
+					</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+					<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+						android:id="@+id/code_version"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_marginStart="2.5dp"
+						android:layout_weight="1"
+						app:hintCutoutBackgroundColor="?attr/colorSurfaceContainer"
+						app:hintEnable="true"
+						app:hintFormat="in"
+						app:hintText="Code Version"
+						app:placeholderEnable="true"
+						app:placeholderText="v1.0">
+
+						<com.google.android.material.textfield.TextInputEditText
+							android:layout_width="match_parent"
+							android:layout_height="match_parent"
+							android:singleLine="true"
+							android:text="1.0"
+							app:hintCutoutBackgroundColor="?attr/colorSurfaceContainer"
+							app:hintEnable="true"
+							app:hintFormat="in"
+							app:layout_constraintBottom_toBottomOf="parent"
+							app:layout_constraintRight_toRightOf="parent"
+							app:layout_constraintStart_toStartOf="parent"
+							app:layout_constraintTop_toTopOf="parent" />
+
+					</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+				</LinearLayout>
+
+				<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
+					android:id="@+id/divider_subsection_one"
+					android:layout_width="0dp"
+					android:layout_height="2dp"
+					android:layout_marginTop="10dp"
+					app:dividerColor="?attr/colorOutlineVariant"
+					app:dividerRadiusSize="16dp"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/versions_type_container"
+					tools:layout_editor_absoluteY="8dp" />
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/android_version_title"
+					style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginTop="10dp"
+					android:text="Android Versions"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/divider_subsection_one" />
+
+				<com.google.android.material.slider.RangeSlider
+					android:id="@+id/android_version"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:stepSize="1"
+					android:valueFrom="0"
+					android:valueTo="20"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@+id/android_version_title"
+					app:thumbHeight="16dp"
+					app:thumbTrackGapSize="0dp"
+					app:thumbWidth="16dp"
+					app:tickColorActive="@android:color/transparent"
+					app:values="@array/android_version_selected" />
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/android_version_message"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Min SDK: API 24 - Target SDK: API 35"
+					android:textColor="@android:color/darker_gray"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/android_version" />
+
+			</androidx.constraintlayout.widget.ConstraintLayout>
+
+		</androidx.cardview.widget.CardView>
+
+		<androidx.cardview.widget.CardView
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_marginHorizontal="10dp"
+			android:layout_marginTop="10dp"
+			app:cardBackgroundColor="?attr/colorSurfaceContainer"
+			app:cardCornerRadius="16dp"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/android_cardview">
+
+			<androidx.constraintlayout.widget.ConstraintLayout
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:padding="8dp">
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/gradle_title_cardview"
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_marginHorizontal="10dp"
+					android:text="Gradle Configuration"
+					android:textSize="26sp"
+					app:fontFamily="sans-serif-black"
+					android:textAlignment="center"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toTopOf="parent" />
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/build_tools_version_title"
+					style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginTop="10dp"
+					android:text="Android Versions"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/gradle_title_cardview" />
+
+				<com.google.android.material.slider.Slider
+					android:id="@+id/build_tools_version"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:stepSize="1"
+					android:valueFrom="0"
+					android:valueTo="4"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@+id/build_tools_version_title"
+					app:thumbHeight="16dp"
+					app:thumbTrackGapSize="0dp"
+					app:thumbWidth="16dp"
+					app:tickColorActive="@android:color/transparent" />
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/build_tools_version_message"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="Build Tools Version: 35"
+					android:textColor="@android:color/darker_gray"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/build_tools_version" />
+
+				<com.google.android.material.textview.MaterialTextView
+					android:id="@+id/java_options_title"
+					style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_marginTop="10dp"
+					android:text="Java Versions"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@id/build_tools_version_message" />
+
+				<com.google.android.material.tabs.TabLayout
+					android:id="@+id/language_option"
+					android:layout_width="match_parent"
+					android:layout_height="wrap_content"
+					android:layout_marginHorizontal="5dp"
+					android:layout_marginTop="10dp"
+					android:background="@drawable/tab_background"
+					app:layout_constraintEnd_toEndOf="parent"
+					app:layout_constraintStart_toStartOf="parent"
+					app:layout_constraintTop_toBottomOf="@+id/java_options_title"
+					app:tabIconTint="@color/tab_icon_m3_selector"
+					app:tabIndicator="@drawable/tab_indicator_background"
+					app:tabIndicatorAnimationDuration="750"
+					app:tabIndicatorAnimationMode="elastic"
+					app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
+					app:tabIndicatorFullWidth="false"
+					app:tabIndicatorGravity="stretch"
+					app:tabInlineLabel="true"
+					app:tabMinWidth="56dp"
+					app:tabRippleColor="@null"
+					app:tabTextColor="@color/tab_icon_m3_selector">
+
+					<com.google.android.material.tabs.TabItem
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:icon="@drawable/ic_java_32"
+						android:text="11" />
+
+					<com.google.android.material.tabs.TabItem
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:icon="@drawable/ic_java_32"
+						android:text="17" />
+
+					<com.google.android.material.tabs.TabItem
+						android:layout_width="match_parent"
+						android:layout_height="match_parent"
+						android:icon="@drawable/ic_java_32"
+						android:text="21" />
+
+				</com.google.android.material.tabs.TabLayout>
+
+			</androidx.constraintlayout.widget.ConstraintLayout>
+
+		</androidx.cardview.widget.CardView>
+
+	</androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.core.widget.NestedScrollView>
+
+	<!--
+	<com.google.android.material.textfield.TextInputLayout
+			android:id="@+id/componentTextInputLayout"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:hint="Name Application Suffix"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toTopOf="parent"
+			app:placeholderEnable="true"
+			app:placeholderText="Beta">
+
+			<com.google.android.material.textfield.TextInputEditText
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:singleLine="true" />
+
+		</com.google.android.material.textfield.TextInputLayout>
+
+		<LinearLayout
+			android:id="@+id/linearLayout"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:padding="0dp"
+			android:layout_marginTop="10dp"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toBottomOf="@+id/componentTextInputLayout">
+
+			<com.google.android.material.textfield.TextInputLayout
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginEnd="2.5dp"
+				android:layout_weight="1"
+				android:hint="Code Version"
+				app:placeholderEnable="true"
+				app:placeholderText="1">
+
+				<com.google.android.material.textfield.TextInputEditText
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:singleLine="true"
+					android:text="1" />
+
+			</com.google.android.material.textfield.TextInputLayout>
+
+			<com.google.android.material.textfield.TextInputLayout
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_marginStart="2.5dp"
+				android:layout_weight="1"
+				android:hint="Code Name"
+				app:placeholderEnable="true"
+				app:placeholderText="v1.0">
+
+				<com.google.android.material.textfield.TextInputEditText
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:singleLine="true"
+					android:text="1.0" />
+
+			</com.google.android.material.textfield.TextInputLayout>
+
+		</LinearLayout>
+
+		<com.google.android.material.textview.MaterialTextView
+			android:id="@+id/android_version_title"
+			style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="10dp"
+			android:text="Android Versions"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
+
+		<com.google.android.material.slider.RangeSlider
+			android:id="@+id/android_version"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:stepSize="1"
+			android:valueFrom="0"
+			android:valueTo="20"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toBottomOf="@+id/android_version_title"
+			app:thumbHeight="16dp"
+			app:thumbTrackGapSize="0dp"
+			app:thumbWidth="16dp"
+			app:tickColorActive="@android:color/transparent"
+			app:values="@array/android_version_selected" />
+
+		<com.google.android.material.textview.MaterialTextView
+			android:id="@+id/android_version_message"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Min SDK: API 24 - Target SDK: API 33"
+			android:textColor="@android:color/darker_gray"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toBottomOf="@+id/android_version" />
+
+		<com.google.android.material.textview.MaterialTextView
+			style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
+			android:id="@+id/java_options_title"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="10dp"
+			android:text="Java Versions"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toBottomOf="@+id/android_version_message" />
+
+		<com.google.android.material.tabs.TabLayout
+			android:id="@+id/language_option"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="10dp"
+			android:background="@drawable/tab_background"
+			android:layout_marginHorizontal="5dp"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toBottomOf="@+id/java_options_title"
+			app:tabIconTint="@color/tab_icon_m3_selector"
+			app:tabIndicator="@drawable/tab_indicator_background"
+			app:tabIndicatorAnimationDuration="750"
+			app:tabIndicatorAnimationMode="elastic"
+			app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
+			app:tabIndicatorFullWidth="false"
+			app:tabIndicatorGravity="stretch"
+			app:tabInlineLabel="true"
+			app:tabMinWidth="56dp"
+			app:tabRippleColor="@null"
+			app:tabTextColor="@color/tab_icon_m3_selector">
+
+			<com.google.android.material.tabs.TabItem
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:icon="@drawable/ic_java_32"
+				android:text="11" />
+
+			<com.google.android.material.tabs.TabItem
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:icon="@drawable/ic_java_32"
+				android:text="17" />
+
+			<com.google.android.material.tabs.TabItem
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:icon="@drawable/ic_java_32"
+				android:text="21" />
+
+		</com.google.android.material.tabs.TabLayout>
+	-->

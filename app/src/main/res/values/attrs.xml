@@ -86,6 +86,13 @@
 			<enum name="layout" value="2" />
 			<enum name="suffix" value="3" />
 		</attr>
+		<attr name="hintCutoutBackgroundColor" format="color" />
+		<attr name="hintFormat" format="enum">
+			<enum name="out" value="0" />
+			<enum name="in" value="1" />
+		</attr>
+
+		<attr name="dividerEnable" format="boolean" />
 
 		<attr name="placeholderText" format="string" />
 		<attr name="placeholderEnable" format="boolean" />
@@ -204,5 +211,21 @@
 		<attr name="frontLayerDarkenAmount" format="float" />
 	</declare-styleable>
 
+	<declare-styleable name="ComponentIconButton">
+		<!-- Icono único del botón. -->
+		<attr name="icon" format="reference" />
+		<!-- Tinte aplicado al icono. -->
+		<attr name="iconTint" format="color" />
+		<!-- Tamaño visual del icono. Default 24dp. -->
+		<attr name="iconSize" format="dimension" />
+		<!-- Diámetro del círculo de fondo (área visual, no el área táctil). Default 40dp. -->
+		<attr name="containerSize" format="dimension" />
+		<!-- Color de relleno del círculo. -->
+		<attr name="fillColor" format="color" />
+		<!-- Color del borde (variante Outline). -->
+		<attr name="strokeColor" format="color" />
+		<!-- Grosor del borde. -->
+		<attr name="strokeWidth" format="dimension" />
+	</declare-styleable>
 
 </resources>
