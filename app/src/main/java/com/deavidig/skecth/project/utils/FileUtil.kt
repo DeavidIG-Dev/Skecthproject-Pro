@@ -27,6 +27,7 @@ import android.provider.MediaStore
 import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
+import com.deavidig.skecth.project.utils.FileUtil.writeFileAnywhere
 import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -50,6 +51,8 @@ import java.util.zip.ZipInputStream
 @Suppress("unused")
 object FileUtil {
 	val separator = File.separator
+
+	val DirectoryOfProject = externalStorageDir + separator + "Sketchproject Pro"
 
 	fun getFileSize(file: File?): Long {
 		if (file == null || !file.exists()) {

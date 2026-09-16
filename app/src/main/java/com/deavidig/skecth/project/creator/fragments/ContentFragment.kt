@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.deavidig.mod.deanielig.tablayout.widget.selectTabAt
+import com.deavidig.skecth.project.creator.fragments.gradle.GradleFragment
 import com.deavidig.sketchprojectpro.databinding.ActivityProjectCreatorFrontBinding
 import com.google.android.material.tabs.TabLayout
 

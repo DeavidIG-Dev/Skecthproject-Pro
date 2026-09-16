@@ -173,9 +173,9 @@
 					app:layout_constraintEnd_toEndOf="parent"
 					app:layout_constraintStart_toStartOf="parent"
 					app:layout_constraintTop_toBottomOf="@+id/android_version_title"
-					app:thumbHeight="16dp"
+					app:thumbHeight="20dp"
 					app:thumbTrackGapSize="0dp"
-					app:thumbWidth="16dp"
+					app:thumbWidth="20dp"
 					app:tickColorActive="@android:color/transparent"
 					app:values="@array/android_version_selected" />
 
@@ -183,7 +183,7 @@
 					android:id="@+id/android_version_message"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:text="Min SDK: API 24 - Target SDK: API 35"
+					android:text="Min SDK: API 24 - Target SDK: API 35 - Max SDK: API 37"
 					android:textColor="@android:color/darker_gray"
 					app:layout_constraintEnd_toEndOf="parent"
 					app:layout_constraintStart_toStartOf="parent"
@@ -330,12 +330,12 @@
 
 				<com.deavidig.mod.deanielig.iconbutton.widget.ComponentIconButton
 					android:id="@+id/material_button_with_icon"
-					android:layout_width="wrap_content"
+					android:layout_width="50dp"
 					android:layout_height="0dp"
 					android:layout_marginTop="10dp"
-					app:fillColor="@android:color/transparent"
 					app:icon="@drawable/ic_add_24"
-					app:iconSize="44dp"
+					app:fillColor="?attr/colorSurfaceContainer"
+					app:iconSize="40dp"
 					app:iconTint="?android:attr/textColorPrimary"
 					app:layout_constraintBottom_toBottomOf="@+id/dependency_list_title"
 					app:layout_constraintEnd_toEndOf="parent"

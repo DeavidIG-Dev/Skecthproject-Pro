@@ -1,6 +1,5 @@
 package com.deavidig.skecth.project.creator.activities
 
-import android.animation.ValueAnimator
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
@@ -16,8 +15,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class ProjectCreatorActivity : ComponentAppCompatActivity() {
 	lateinit var layout_binding: ActivityProjectCreatorBinding
-
-	private val animation: ValueAnimator = ValueAnimator()
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)

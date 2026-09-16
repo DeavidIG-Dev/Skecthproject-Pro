@@ -12,9 +12,9 @@ import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import com.deavidig.skecth.project.utils.FileUtil
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import androidx.core.content.edit
 
 open class ComponentPermissionAppCompatActivity :
 	ComponentAppCompatActivity() {
@@ -27,29 +27,30 @@ open class ComponentPermissionAppCompatActivity :
 	private var accessFile = false
 	private lateinit var sharedPreferences: SharedPreferences
 
-	private val openDocumentTreeLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+	private val openDocumentTreeLauncher =
+		registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
 
-		if (uri == null) {
-			onStoragePermissionDenied()
-			return@registerForActivityResult
+			if (uri == null) {
+				onStoragePermissionDenied()
+				return@registerForActivityResult
+			}
+
+			try {
+				contentResolver.takePersistableUriPermission(
+					uri,
+					Intent.FLAG_GRANT_READ_URI_PERMISSION or
+							Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+				)
+
+				FileUtil.saveTreeUri(this, uri)
+
+				onStoragePermissionGranted()
+
+			} catch (_: SecurityException) {
+
+				onStoragePermissionDenied()
+			}
 		}
-
-		try {
-			contentResolver.takePersistableUriPermission(
-				uri,
-				Intent.FLAG_GRANT_READ_URI_PERMISSION or
-						Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-			)
-
-			FileUtil.saveTreeUri(this, uri)
-
-			onStoragePermissionGranted()
-
-		} catch (_: SecurityException) {
-
-			onStoragePermissionDenied()
-		}
-	}
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
@@ -91,11 +92,23 @@ open class ComponentPermissionAppCompatActivity :
 	}
 
 	private fun checkLegacyStoragePermission() {
-		val permissions = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-		val missingPermissions = permissions.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+		val permissions = arrayOf(
+			Manifest.permission.READ_EXTERNAL_STORAGE,
+			Manifest.permission.WRITE_EXTERNAL_STORAGE
+		)
+		val missingPermissions = permissions.filter {
+			ContextCompat.checkSelfPermission(
+				this,
+				it
+			) != PackageManager.PERMISSION_GRANTED
+		}
 
 		if (missingPermissions.isNotEmpty()) {
-			ActivityCompat.requestPermissions(this, missingPermissions.toTypedArray(), REQUEST_STORAGE_PERMISSION)
+			ActivityCompat.requestPermissions(
+				this,
+				missingPermissions.toTypedArray(),
+				REQUEST_STORAGE_PERMISSION
+			)
 		} else {
 			onStoragePermissionGranted()
 		}
@@ -118,7 +131,9 @@ open class ComponentPermissionAppCompatActivity :
 			awaitingManageStorageResult = true
 
 			try {
-				val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply { data = Uri.parse("package:$packageName") }
+				val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+					data = Uri.parse("package:$packageName")
+				}
 				startActivity(intent)
 			} catch (_: Exception) {
 				try {
@@ -143,7 +158,8 @@ open class ComponentPermissionAppCompatActivity :
 			return
 		}
 
-		val granted = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+		val granted =
+			grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
 
 		if (granted) {
 			onStoragePermissionGranted()
@@ -152,7 +168,7 @@ open class ComponentPermissionAppCompatActivity :
 		}
 	}
 
-	private fun onStoragePermissionGranted() {
+	protected open fun onStoragePermissionGranted() {
 		accessFile = true
 		sharedPreferences.edit { putBoolean("AccessFile-Settings", accessFile) }
 		MaterialAlertDialogBuilder(this)
@@ -162,7 +178,7 @@ open class ComponentPermissionAppCompatActivity :
 			.show()
 	}
 
-	private fun onStoragePermissionDenied() {
+	protected open fun onStoragePermissionDenied() {
 		accessFile = false
 		sharedPreferences.edit { putBoolean("AccessFile-Settings", accessFile) }
 		MaterialAlertDialogBuilder(this)

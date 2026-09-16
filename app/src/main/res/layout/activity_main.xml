@@ -50,13 +50,34 @@
 		tools:itemCount="15"
 		tools:listitem="@layout/activity_main_recyclerview_project" />
 
-	<com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+	<!-- <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 		android:id="@+id/projectCreator"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="end|bottom"
 		android:layout_margin="16dp"
 		android:text="New Project"
-		app:icon="@drawable/ic_add_24" />
+		app:icon="@drawable/ic_add_24" /> -->
+
+	<com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonMenu
+		android:id="@+id/projectCreator"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="end|bottom"
+		android:text="New Project"
+		android:icon="@drawable/ic_add_24"
+		app:iconSide="start"
+		app:menuOrientation="top"
+		app:activeMenuBy="longclick"
+		app:scrimEnabled="false">
+
+		<com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonItem
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			app:icon="@drawable/ic_settings_backup_restore_24"
+			android:text="Restore" />
+
+	</com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonMenu>
+
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

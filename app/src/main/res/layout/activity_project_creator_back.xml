@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
-	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent">
 
@@ -16,15 +15,30 @@
 		app:layout_constraintStart_toStartOf="parent"
 		app:layout_constraintTop_toTopOf="parent" />
 
-	<com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+	<com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonMenu
 		android:id="@+id/new_modue"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:text="New Module"
-		android:layout_marginBottom="68dp"
-		android:layout_marginEnd="16dp"
-		app:icon="@drawable/ic_add_24"
+		android:icon="@drawable/ic_add_24"
+		android:layout_marginBottom="52dp"
+		app:menuOrientation="top"
+		app:activeMenuBy="longclick"
 		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintEnd_toEndOf="parent" />
+		app:layout_constraintEnd_toEndOf="parent">
+
+		<com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonItem
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Backup Module"
+			app:icon="@drawable/ic_backup_24" />
+
+		<com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonItem
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Restore Module"
+			app:icon="@drawable/ic_settings_backup_restore_24" />
+
+	</com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonMenu>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

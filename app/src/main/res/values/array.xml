@@ -1,16 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+	<string-array name="placeholder_tab_filter">
+		<item>Gaming</item>
+		<item>Utils</item>
+		<item>Important</item>
+		<item>Favorite</item>
+	</string-array>
+
 	<array name="android_version_selected">
 		<item>7.0</item>
 		<item>18.0</item>
+		<item>20.0</item>
 	</array>
+
 	<string-array name="android_application_prefix">
-		<item>Pre-Alpha</item>
-		<item>Alpha</item>
-		<item>Beta</item>
-		<item>Release</item>
-		<item>Release Candidate</item>
-		<item>Stable Release</item>
-		<item>General Availability</item>
+		<item>prealpha</item>
+		<item>alpha</item>
+		<item>beta</item>
+		<item>pro</item>
+	</string-array>
+
+	<string-array name="android_version_name">
+		<item>Android 4.1 Jelly Bean</item>
+		<item>Android 4.2 Jelly Bean</item>
+		<item>Android 4.3 Jelly Bean</item>
+		<item>Android 4.4 KitKat</item>
+
+		<item>Android 5.0 Lollipop</item>
+		<item>Android 5.1 Lollipop</item>
+
+		<item>Android 6.0 Marshmallow</item>
+
+		<item>Android 7.0 Nougat</item>
+		<item>Android 7.1 Nougat</item>
+
+		<item>Android 8.0 Oreo</item>
+		<item>Android 8.1 Oreo</item>
+
+		<item>Android 9 Pie</item>
+
+		<item>Android 10 Quince Tart</item>
+		<item>Android 11 Red Velvet Cake</item>
+		<item>Android 12 Snow Cone</item>
+		<item>Android 12L Snow Cone V2</item>
+		<item>Android 13 Tiramisu</item>
+		<item>Android 14 Upside Down Cake</item>
+		<item>Android 15 Vanilla Ice Cream</item>
+		<item>Android 16 Baklava</item>
+		<item>Android 17 Cinnamon Bun</item>
+	</string-array>
+
+	<string-array name="android_version_code">
+		<item>API 16</item>
+		<item>API 17</item>
+		<item>API 18</item>
+		<item>API 19</item>
+
+		<item>API 21</item>
+		<item>API 22</item>
+		<item>API 23</item>
+		<item>API 24</item>
+		<item>API 25</item>
+		<item>API 26</item>
+		<item>API 27</item>
+		<item>API 28</item>
+		<item>API 29</item>
+
+		<item>API 30</item>
+		<item>API 31</item>
+		<item>API 32</item>
+		<item>API 33</item>
+		<item>API 34</item>
+		<item>API 35</item>
+		<item>API 36</item>
+		<item>API 37</item>
 	</string-array>
 </resources>

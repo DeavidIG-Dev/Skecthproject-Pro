@@ -13,6 +13,7 @@ import androidx.core.view.forEach
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import com.deavidig.mod.deanielig.search.widget.ComponentSearchBar
+import com.deavidig.mod.deanielig.tooltip.widget.ComponentTooltip
 import com.deavidig.skecth.project.creator.activities.ProjectCreatorActivity
 import com.deavidig.sketchprojectpro.R
 import com.deavidig.sketchprojectpro.databinding.ActivityProjectCreatorBackBinding
@@ -107,6 +108,24 @@ class ModulesFragment : Fragment() {
 
 					item.isVisible = item.subMenu?.children?.any { it.isVisible } == true
 				}
+			}
+		}
+
+		searchBar.setOnClickListener {
+			ComponentTooltip(searchBar)
+				.setTitle("Suggestion")
+				.setMessage("Tap the search icon on the toolbar")
+				.setPositiveButton("OK", null)
+				.show()
+		}
+
+		searchBar.setOnSearchActiveChangeListener { isSearchActive ->
+			if (!isSearchActive && searchBar.getQuery().isNotEmpty()) {
+				ComponentTooltip(searchBar)
+					.setTitle("Suggestion")
+					.setMessage("Clear the search field before exiting Search Mode")
+					.setPositiveButton("OK", null)
+					.show()
 			}
 		}
 
