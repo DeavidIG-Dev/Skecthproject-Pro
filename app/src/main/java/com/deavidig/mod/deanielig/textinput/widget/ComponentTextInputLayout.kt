@@ -1,5 +1,7 @@
 package com.deavidig.mod.deanielig.textinput.widget
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
@@ -12,6 +14,8 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.ColorStateListDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.os.Parcel
+import android.os.Parcelable
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.LayoutInflater
@@ -41,6 +45,7 @@ import com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout.Comp
 import com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout.Companion.PLACEHOLDER_MISMATCH_FADE_DURATION_MS
 import com.deavidig.sketchprojectpro.R
 import com.deavidig.sketchprojectpro.databinding.ComponentTextInputLayoutBinding
+import com.google.android.material.shape.MaterialShapeDrawable
 import com.google.android.material.textview.MaterialTextView
 import kotlin.math.min
 
@@ -113,7 +118,7 @@ import kotlin.math.min
  *
  * @author DeanielIG, DeavidIG
  */
-class ComponentTextInputLayout(
+open class ComponentTextInputLayout(
 	context: Context,
 	attrs: AttributeSet? = null
 ) : ConstraintLayout(
@@ -192,8 +197,9 @@ class ComponentTextInputLayout(
 	}
 
 	/**
-	 * Defines the view used as the start anchor for the floating hint label
-	 * when the label extends beyond the [EditText]'s bounds.
+	 * Defines how far the floating hint label extends on its start side
+	 * while it rests over the [EditText], and therefore which leading views
+	 * it covers (and hides) while resting.
 	 *
 	 * Set this value using [setHintStartAnchor] or the `hintStartAnchor` XML
 	 * attribute. When unset (`auto`), the [EditText]'s start is used by default.
@@ -201,24 +207,28 @@ class ComponentTextInputLayout(
 	enum class HintStartAnchor {
 
 		/**
-		 * Aligns with the start of the leading icon, covering the icon and
-		 * prefix area.
+		 * The hint starts right **after** the leading icon: it covers and
+		 * hides **only the prefix**. The icon stays visible.
 		 */
 		START_ICON,
 
 		/**
-		 * Aligns with the start of the leading container, covering both the
-		 * icon and prefix areas.
+		 * The hint starts at the very start of the leading area: it covers
+		 * and hides **both the leading icon and the prefix**.
 		 */
 		START_LAYOUT,
 
-		/** Aligns with the start of the prefix text. */
+		/**
+		 * The hint starts right **after** the prefix, exactly where typed
+		 * text begins: it **hides nothing**.
+		 */
 		PREFIX
 	}
 
 	/**
-	 * Defines the view used as the end anchor for the floating hint label
-	 * when the label extends beyond the [EditText]'s bounds.
+	 * Defines how far the floating hint label extends on its end side
+	 * while it rests over the [EditText], and therefore which trailing views
+	 * it covers (and hides) while resting.
 	 *
 	 * Set this value using [setHintEndAnchor] or the `hintEndAnchor` XML
 	 * attribute. When unset (`auto`), the [EditText]'s end is used by default.
@@ -226,18 +236,21 @@ class ComponentTextInputLayout(
 	enum class HintEndAnchor {
 
 		/**
-		 * Aligns with the end of the trailing icon, covering the icon and
-		 * suffix area.
+		 * The hint ends right **before** the trailing icon: it covers and
+		 * hides **only the suffix**. The icon stays visible.
 		 */
 		END_ICON,
 
 		/**
-		 * Aligns with the end of the trailing container, covering both the
-		 * icon and suffix areas.
+		 * The hint ends at the very end of the trailing area: it covers
+		 * and hides **both the suffix and the trailing icon**.
 		 */
 		END_LAYOUT,
 
-		/** Aligns with the end of the suffix text. */
+		/**
+		 * The hint ends right **before** the suffix, exactly where typed
+		 * text ends: it **hides nothing**.
+		 */
 		SUFFIX
 	}
 
@@ -543,9 +556,17 @@ class ComponentTextInputLayout(
 	 * Backing field for [setHintCutoutBackgroundColor] — the color painted
 	 * behind the floated label's text while [mHintFormat] is [HintFormat.IN],
 	 * so the border stroke doesn't show through it. `null` (the default)
-	 * falls back to the theme's `colorSurface` (see [mColorSurfaceCutout]).
+	 * means the color is resolved automatically — see
+	 * [resolveHintCutoutColor].
 	 */
 	private var mHintCutoutBackgroundColor: ColorStateList? = null
+
+	/**
+	 * Solid background color the [EditText] child had **before** [addView]
+	 * forced its background to transparent, or `null` if it had none (or a
+	 * non-color drawable). First source of [resolveHintCutoutColor].
+	 */
+	private var mEditTextBackgroundColor: Int? = null
 
 	private var mStartButtonLayoutStyle: ButtonLayoutStyle = ButtonLayoutStyle.NORMAL
 	private var mEndButtonLayoutStyle: ButtonLayoutStyle = ButtonLayoutStyle.NORMAL
@@ -625,10 +646,10 @@ class ComponentTextInputLayout(
 	}
 
 	/**
-	 * Fallback background painted behind the floated hint label while
-	 * [mHintFormat] is [HintFormat.IN] and no explicit
-	 * [setHintCutoutBackgroundColor] has been provided. Resolved once, like
-	 * every other `mColorXxx` cached field above.
+	 * Last-resort background painted behind the floated hint label while
+	 * [mHintFormat] is [HintFormat.IN], used by [resolveHintCutoutColor]
+	 * when neither the [EditText] nor any ancestor has a visible background
+	 * color. Resolved once, like every other `mColorXxx` cached field above.
 	 */
 	private val mColorSurfaceCutout: ColorStateList by lazy { resolveThemeColorStateList(com.google.android.material.R.attr.colorSurface) }
 
@@ -1262,7 +1283,7 @@ class ComponentTextInputLayout(
 
 		textView.text = current?.truncate(11)
 		mPrefixTextColor?.let { textView.setTextColor(it) }
-		textView.visibility = if (mPrefixEnable) VISIBLE else GONE
+		applyHintOverlapVisibility(isHintResting())
 
 		if (adapter != null && adapter.getItemCount() > 1) {
 			textView.contentDescription = "Prefix"
@@ -1448,7 +1469,7 @@ class ComponentTextInputLayout(
 
 		textView.text = current?.truncate(11)
 		mSuffixTextColor?.let { textView.setTextColor(it) }
-		textView.visibility = if (mSuffixEnable) VISIBLE else GONE
+		applyHintOverlapVisibility(isHintResting())
 
 		if (adapter != null && adapter.getItemCount() > 1) {
 			textView.contentDescription = "Suffix"
@@ -1599,31 +1620,34 @@ class ComponentTextInputLayout(
 	 * its scale pivot to match (so it shrinks toward the edge it's anchored
 	 * to, instead of always around its own center regardless of alignment).
 	 *
-	 * The label's start/end edges align to [mHintStartAnchor] /
-	 * [mHintEndAnchor] when set, or fall back to the [EditText]'s own start/
-	 * end (`target.id`) when `null` — see [setHintStartAnchor] /
-	 * [setHintEndAnchor] for what each option visually does.
+	 * The label's start/end edges are resolved by [applyHintStartConstraint] /
+	 * [applyHintEndConstraint] from [mHintStartAnchor] / [mHintEndAnchor], or
+	 * fall back to the [EditText]'s own start/end when `null` — see
+	 * [setHintStartAnchor] / [setHintEndAnchor] for what each option does.
+	 *
+	 * All four horizontal constraints are reset first, so switching gravity
+	 * or anchor at runtime never leaves a stale constraint from the
+	 * previous configuration.
 	 */
 	private fun applyHintGravity(target: EditText) {
 		val label = mFloatingHintLabel ?: return
 		val params = label.layoutParams as? LayoutParams ?: return
 
-		val startId = mHintStartAnchor?.alignedStartViewId() ?: target.id
-		val endId = mHintEndAnchor?.alignedEndViewId() ?: target.id
-
 		params.startToStart = LayoutParams.UNSET
+		params.startToEnd = LayoutParams.UNSET
 		params.endToEnd = LayoutParams.UNSET
+		params.endToStart = LayoutParams.UNSET
 		params.horizontalBias = 0f
 
 		when (mHintGravity) {
-			HintGravity.START -> params.startToEnd = startId
+			HintGravity.START -> applyHintStartConstraint(params, target)
 			HintGravity.CENTER -> {
-				params.startToEnd = startId
-				params.endToStart = endId
+				applyHintStartConstraint(params, target)
+				applyHintEndConstraint(params, target)
 				params.horizontalBias = 0.5f
 			}
 
-			HintGravity.END -> params.endToStart = endId
+			HintGravity.END -> applyHintEndConstraint(params, target)
 		}
 
 		label.layoutParams = params
@@ -1637,13 +1661,16 @@ class ComponentTextInputLayout(
 	 * actually begins:
 	 *
 	 * - `null` (default): the hint's start edge matches the [EditText]'s
-	 *   own start edge exactly — the original, unchanged behavior.
-	 * - [HintStartAnchor.PREFIX]: the hint's start edge aligns with the
-	 *   **start** of the prefix (not after it, like typed text does), so
-	 *   the resting hint visually stretches leftward over the prefix.
-	 * - [HintStartAnchor.START_LAYOUT] / [HintStartAnchor.START_ICON]:
-	 *   stretches further still, over the leading-icon container too — the
-	 *   most "complete" coverage on this side.
+	 *   own start edge exactly — nothing is covered or hidden.
+	 * - [HintStartAnchor.PREFIX]: the hint starts right after the prefix,
+	 *   where typed text starts — **nothing is hidden**.
+	 * - [HintStartAnchor.START_ICON]: the hint starts right after the
+	 *   leading icon — hides **only the prefix**.
+	 * - [HintStartAnchor.START_LAYOUT]: the hint starts at the very start
+	 *   of the leading area — hides **the leading icon and the prefix**.
+	 *
+	 * Only what the resting hint really covers is hidden (see
+	 * [updateFloatingHintLabel]); everything else keeps its normal alpha.
 	 *
 	 * This is independent from [setHintEndAnchor], so one side can be left
 	 * at its minimal default while the other is set to fully cover its
@@ -1664,13 +1691,16 @@ class ComponentTextInputLayout(
 	 * ends:
 	 *
 	 * - `null` (default): the hint's end edge matches the [EditText]'s own
-	 *   end edge exactly — the original, unchanged behavior.
-	 * - [HintEndAnchor.SUFFIX]: the hint's end edge aligns with the
-	 *   **end** of the suffix (not before it, like typed text does), so the
-	 *   resting hint visually stretches rightward over the suffix.
-	 * - [HintEndAnchor.END_LAYOUT] / [HintEndAnchor.END_ICON]:
-	 *   stretches further still, over the trailing-icon container too — the
-	 *   most "complete" coverage on this side.
+	 *   end edge exactly — nothing is covered or hidden.
+	 * - [HintEndAnchor.SUFFIX]: the hint ends right before the suffix,
+	 *   where typed text ends — **nothing is hidden**.
+	 * - [HintEndAnchor.END_ICON]: the hint ends right before the trailing
+	 *   icon — hides **only the suffix**.
+	 * - [HintEndAnchor.END_LAYOUT]: the hint ends at the very end of the
+	 *   trailing area — hides **the suffix and the trailing icon**.
+	 *
+	 * Only what the resting hint really covers is hidden (see
+	 * [updateFloatingHintLabel]); everything else keeps its normal alpha.
 	 *
 	 * This is independent from [setHintStartAnchor], so one side can be
 	 * left at its minimal default while the other is set to fully cover its
@@ -1703,8 +1733,10 @@ class ComponentTextInputLayout(
 	 * Sets the background color painted behind the floated label's text
 	 * while [getHintFormat] is [HintFormat.IN], so the outlined border
 	 * doesn't show through it — analogous to the boxBackgroundColor a real
-	 * `TextInputLayout` reveals around its own cutout. Pass `null` to fall
-	 * back to the theme's `colorSurface`. Has no visible effect while the
+	 * `TextInputLayout` reveals around its own cutout. Pass `null` (the
+	 * default) to resolve it automatically: the [EditText]'s background
+	 * color, else the nearest ancestor's, else the theme's `colorSurface`
+	 * (see [resolveHintCutoutColor]). Has no visible effect while the
 	 * format is [HintFormat.OUT].
 	 */
 	fun setHintCutoutBackgroundColor(color: ColorStateList?) {
@@ -1712,7 +1744,7 @@ class ComponentTextInputLayout(
 		mEditText?.let { applyHintFormat(it) }
 	}
 
-	/** Returns the explicit hint cutout background color, if set (`null` = falls back to `colorSurface`). */
+	/** Returns the explicit hint cutout background color, if set (`null` = resolved automatically). */
 	fun getHintCutoutBackgroundColor(): ColorStateList? = mHintCutoutBackgroundColor
 
 	/**
@@ -1887,25 +1919,90 @@ class ComponentTextInputLayout(
 	}
 
 	/**
-	 * Resolves a [HintStartAnchor] to the view the hint label should align
-	 * its start edge *with* (`startToStart`), letting it reach further left
-	 * than where typing actually starts.
+	 * Sets the label's start-side constraint from [mHintStartAnchor]:
+	 *
+	 * - `START_LAYOUT`: aligned to the **start** of the leading icon
+	 *   (`startToStart`), so the label covers icon + prefix.
+	 * - `START_ICON`: aligned to the **end** of the leading icon
+	 *   (`startToEnd`), so the label covers only the prefix.
+	 * - `PREFIX`: aligned to the **end** of the prefix (`startToEnd`), so
+	 *   the label covers nothing.
+	 * - `null`: aligned to the [EditText]'s own start (`startToStart`).
+	 *
+	 * The caller must have reset `startToStart` / `startToEnd` beforehand
+	 * (see [applyHintGravity]).
 	 */
-	private fun HintStartAnchor.alignedStartViewId(): Int = when (this) {
-		HintStartAnchor.START_ICON -> view_binding.imageStart.id
-		HintStartAnchor.START_LAYOUT -> view_binding.start.id
-		HintStartAnchor.PREFIX -> view_binding.prefix.id
+	private fun applyHintStartConstraint(params: LayoutParams, target: EditText) {
+		when (mHintStartAnchor) {
+			HintStartAnchor.START_LAYOUT -> params.startToStart = view_binding.imageStart.id
+			HintStartAnchor.START_ICON -> params.startToEnd = view_binding.imageStart.id
+			HintStartAnchor.PREFIX -> params.startToEnd = view_binding.prefix.id
+			null -> params.startToStart = target.id
+		}
 	}
 
 	/**
-	 * Resolves a [HintEndAnchor] to the view the hint label should align
-	 * its end edge *with* (`endToEnd`), letting it reach further right than
-	 * where typing actually ends.
+	 * Sets the label's end-side constraint from [mHintEndAnchor]:
+	 *
+	 * - `END_LAYOUT`: aligned to the **end** of the trailing icon
+	 *   (`endToEnd`), so the label covers suffix + icon.
+	 * - `END_ICON`: aligned to the **start** of the trailing icon
+	 *   (`endToStart`), so the label covers only the suffix.
+	 * - `SUFFIX`: aligned to the **start** of the suffix (`endToStart`), so
+	 *   the label covers nothing.
+	 * - `null`: aligned to the [EditText]'s own end (`endToEnd`).
+	 *
+	 * The caller must have reset `endToEnd` / `endToStart` beforehand
+	 * (see [applyHintGravity]).
 	 */
-	private fun HintEndAnchor.alignedEndViewId(): Int = when (this) {
-		HintEndAnchor.END_ICON -> view_binding.imageEnd.id
-		HintEndAnchor.END_LAYOUT -> view_binding.end.id
-		HintEndAnchor.SUFFIX -> view_binding.suffix.id
+	private fun applyHintEndConstraint(params: LayoutParams, target: EditText) {
+		when (mHintEndAnchor) {
+			HintEndAnchor.END_LAYOUT -> params.endToEnd = view_binding.imageEnd.id
+			HintEndAnchor.END_ICON -> params.endToStart = view_binding.imageEnd.id
+			HintEndAnchor.SUFFIX -> params.endToStart = view_binding.suffix.id
+			null -> params.endToEnd = target.id
+		}
+	}
+
+	/** `true` if the resting hint covers the leading icon ([HintStartAnchor.START_LAYOUT]). */
+	private fun hintCoversStartIcon() = mHintStartAnchor == HintStartAnchor.START_LAYOUT
+
+	/** `true` if the resting hint covers the prefix ([HintStartAnchor.START_LAYOUT] or [HintStartAnchor.START_ICON]). */
+	private fun hintCoversPrefix() =
+		mHintStartAnchor == HintStartAnchor.START_LAYOUT || mHintStartAnchor == HintStartAnchor.START_ICON
+
+	/** `true` if the resting hint covers the suffix ([HintEndAnchor.END_LAYOUT] or [HintEndAnchor.END_ICON]). */
+	private fun hintCoversSuffix() =
+		mHintEndAnchor == HintEndAnchor.END_LAYOUT || mHintEndAnchor == HintEndAnchor.END_ICON
+
+	/** `true` if the resting hint covers the trailing icon ([HintEndAnchor.END_LAYOUT]). */
+	private fun hintCoversEndIcon() = mHintEndAnchor == HintEndAnchor.END_LAYOUT
+
+	/**
+	 * Real rendered line height of [target]'s current text size — ascent
+	 * plus descent, via [Paint.getFontMetrics] — instead of the raw
+	 * [EditText.getTextSize] value alone.
+	 *
+	 * A plain point size systematically *underestimates* how tall a line
+	 * of that text actually renders (most fonts' ascent+descent run
+	 * noticeably past the nominal size). Used **only** by
+	 * [reserveSpaceForFloatingHint], to size the safety margin reserved
+	 * above the border — not by [updateFloatingHintLabel]'s own travel
+	 * distance, which stays [EditText.getTextSize]-based on purpose (see
+	 * that function's KDoc): the physical label always renders at this
+	 * real, larger height regardless of what the travel-distance math
+	 * assumes, so a margin sized off the smaller nominal value used to
+	 * leave the label's real top poking out above it and getting
+	 * clipped, once a field actually had text and the label floated up
+	 * (only then does [HintFormat.OUT] fully rely on that reserved
+	 * margin). Feeding this same larger value into the travel distance
+	 * too, instead of just the margin, "fixed" the clipping but moved
+	 * the label's resting spot itself visibly higher than intended —
+	 * this function's result must stay confined to the margin.
+	 */
+	private fun floatedTextLineHeight(target: EditText): Float {
+		val metrics = target.paint.fontMetrics
+		return metrics.descent - metrics.ascent
 	}
 
 	/**
@@ -1940,7 +2037,7 @@ class ComponentTextInputLayout(
 		val reserved = if (!mHintEnable) {
 			0
 		} else {
-			val floatedLabelHeight = target.textSize * HINT_FLOATING_SCALE
+			val floatedLabelHeight = floatedTextLineHeight(target) * HINT_FLOATING_SCALE
 			when (mHintFormat) {
 				// The label floats fully above the border, so the border
 				// needs to clear the label's whole height, plus a small
@@ -1963,6 +2060,74 @@ class ComponentTextInputLayout(
 	}
 
 	/**
+	 * Returns this view's solid background color, or `null` if it has none
+	 * (no background, or a drawable that isn't a plain color/fill). Unlike
+	 * [backgroundColor], it never invents a fallback, so callers can tell
+	 * "no color" apart from a real one.
+	 */
+	private fun View.solidBackgroundColorOrNull(): Int? = when (val bg = background) {
+		is ColorDrawable -> bg.color
+		is ColorStateListDrawable -> bg.colorStateList.defaultColor
+		is MaterialShapeDrawable -> bg.fillColor?.defaultColor
+		is GradientDrawable -> bg.color?.defaultColor
+		else -> null
+	}
+
+	/**
+	 * Resolves the color painted behind the floated hint while
+	 * [HintFormat.IN] is active, so the border stroke never shows through
+	 * the label:
+	 *
+	 * 1. The explicit [setHintCutoutBackgroundColor], if any.
+	 * 2. Otherwise, the [EditText]'s own background color
+	 *    ([mEditTextBackgroundColor]).
+	 * 3. If that is missing or transparent, the background color of this
+	 *    component and then of each ancestor, nearest first.
+	 * 4. If none has a color, the theme's `colorSurface`
+	 *    ([mColorSurfaceCutout]).
+	 *
+	 * The layers are composited (nearest on top) over `colorSurface`, so a
+	 * fully transparent layer is skipped and a semi-transparent one still
+	 * ends up opaque — the label background never lets the line through.
+	 */
+	private fun resolveHintCutoutColor(): Int {
+		mHintCutoutBackgroundColor?.let { return it.defaultColor }
+
+		val layers = ArrayList<Int>()
+		mEditTextBackgroundColor?.let { layers.add(it) }
+		var ancestor: View? = this
+		while (ancestor != null) {
+			ancestor.solidBackgroundColorOrNull()?.let { layers.add(it) }
+			ancestor = ancestor.parent as? View
+		}
+
+		var result = mColorSurfaceCutout.defaultColor
+		for (layer in layers.asReversed()) {
+			result = ColorUtils.compositeColors(layer, result)
+		}
+		return result
+	}
+
+	/** Paints [label]'s cutout background with [resolveHintCutoutColor]. */
+	private fun applyHintCutoutColor(label: View) {
+		label.setBackgroundColor(resolveHintCutoutColor())
+	}
+
+	/**
+	 * While [addView] runs during XML inflation this view isn't attached to
+	 * its parent yet, so the ancestors' background colors weren't
+	 * available then. Re-resolve the cutout color now that they are
+	 * (only relevant for [HintFormat.IN] without an explicit color).
+	 */
+	override fun onAttachedToWindow() {
+		super.onAttachedToWindow()
+		val label = mFloatingHintLabel ?: return
+		if (mHintFormat == HintFormat.IN && mHintCutoutBackgroundColor == null) {
+			applyHintCutoutColor(label)
+		}
+	}
+
+	/**
 	 * Applies everything [mHintFormat] controls: the floated label's cutout
 	 * background/padding (only meaningful for [HintFormat.IN]), the space
 	 * reserved above the border for it, and the resting/floated position
@@ -1971,9 +2136,6 @@ class ComponentTextInputLayout(
 	 * changes at runtime.
 	 */
 	private fun applyHintFormat(target: EditText) {
-		fun getBackgroundColorParent(): Int =
-			(parent as? ViewGroup)?.backgroundColor ?: Color.TRANSPARENT
-
 		val label = mFloatingHintLabel ?: return
 
 		when (mHintFormat) {
@@ -1983,9 +2145,7 @@ class ComponentTextInputLayout(
 			}
 
 			HintFormat.IN -> {
-				val cutoutColor = mHintCutoutBackgroundColor?.defaultColor
-					?: getBackgroundColorParent()
-				label.setBackgroundColor(cutoutColor)
+				applyHintCutoutColor(label)
 				val horizontalPadding = HINT_CUTOUT_HORIZONTAL_PADDING_DP.dp
 				label.setPadding(horizontalPadding, 0, horizontalPadding, 0)
 			}
@@ -2063,24 +2223,24 @@ class ComponentTextInputLayout(
 	 * the hint on focus alone would fight the placeholder for the same
 	 * space.
 	 *
-	 * (Bug fix: `isFloating` used to also be forced `true` whenever
-	 * `target.isFocused` or the `animate` parameter itself was `true` —
-	 * meaning gaining focus on an *empty* field floated the hint anyway,
-	 * directly contradicting the paragraph above and fighting the
-	 * placeholder for the same resting spot. Only actual text now drives it,
-	 * matching the documented intent.)
+	 * (Note: `isFloating` is `true` when there is text **or** the field is
+	 * focused, and never depends on the `animate` parameter, which only
+	 * chooses between an instant change and an animated one.)
 	 *
 	 * Also fades the label in/out based on [mHintEnable], and — independently
-	 * — fades whichever prefix/suffix/icon views [mHintStartAnchor] /
-	 * [mHintEndAnchor] say the *resting* label visually covers: hidden while
-	 * the hint is enabled and resting over them, shown otherwise. (Bug fix:
-	 * this used to reuse the label's own [mHintEnable]-driven alpha as the
-	 * icons' fade target too, so a disabled hint — itself invisible — could
-	 * still leave a *visible* field's icon permanently faded out; and
-	 * `HintStartAnchor.START_ICON` never faded [view_binding.imageStart] at
-	 * all, while `HintEndAnchor.END_ICON` mistakenly faded
-	 * [view_binding.prefix] / [view_binding.suffix] instead of
-	 * [view_binding.imageEnd].)
+	 * — fades **only** the views the *resting* label really covers, hidden
+	 * while the hint is enabled and resting over them, shown otherwise:
+	 *
+	 * - `START_LAYOUT`: leading icon + prefix. `START_ICON`: prefix only.
+	 *   `PREFIX` / `null`: nothing.
+	 * - `END_LAYOUT`: suffix + trailing icon. `END_ICON`: suffix only.
+	 *   `SUFFIX` / `null`: nothing.
+	 *
+	 * The covered views are also set to `GONE` while the hint rests (see
+	 * [applyHintOverlapVisibility]), so touches in that area reach the
+	 * [EditText] instead of the invisible prefix/suffix/icons. Views the
+	 * anchors don't cover always go back to full alpha and only follow
+	 * their own `enable` flags.
 	 *
 	 * The scale pivot is recomputed on every call to match [mHintGravity]:
 	 * a `START`-aligned label shrinks from its left edge, an `END`-aligned
@@ -2098,6 +2258,12 @@ class ComponentTextInputLayout(
 	 * [FastOutSlowInInterpolator], Material's standard "emphasized" easing
 	 * curve, instead of a generic ease-in-ease-out.
 	 *
+	 * Both directions animate when [animate] is `true`: floating **up**
+	 * scales/translates the label and fades the covered prefix/suffix/icons
+	 * **in**; floating **down** (focus lost or text cleared) reverses the
+	 * motion and fades them **out**, keeping them `VISIBLE` until the fade
+	 * finishes and only then setting them to `GONE`.
+	 *
 	 * @param animate `false` on first layout to avoid an unwanted entrance
 	 *   animation, and on every re-sync triggered by [mHintLayoutListener];
 	 *   `true` for real focus/text changes.
@@ -2112,10 +2278,37 @@ class ComponentTextInputLayout(
 			HintGravity.END -> label.width.toFloat()
 		}
 
-		val isFloating = !target.text.isNullOrEmpty() || animate
+		// `animate` only decides instant vs. animated — never whether the
+		// hint floats. (Before, `|| animate` forced "floating" on every
+		// animated call, so a *downward* animation was impossible.)
+		val isFloating = !target.text.isNullOrEmpty() || target.isFocused
 		val targetScale = if (isFloating) HINT_FLOATING_SCALE else 1f
+		// While the hint rests over them, the views the anchors cover are
+		// set to GONE (not just faded), so they can't intercept touches:
+		// a tap in that area reaches the EditText instead. Views the
+		// anchors don't reach only follow their own enable flag.
+		//
+		// Going down (resting) with an animation: the covered views must
+		// stay VISIBLE while they fade out, and only become GONE once the
+		// animation ends (see the listener below). Going up (floating):
+		// they become VISIBLE right away and fade in from alpha 0.
+		val hintResting = mHintEnable && !isFloating
+		val deferGone = animate && hintResting
+		applyHintOverlapVisibility(hintResting, keepCoveredVisible = deferGone)
+
 		val targetTranslationY = if (isFloating) {
 			val restingCenterY = target.top + target.height / 2f
+			// Deliberately textSize-based, NOT floatedTextLineHeight() — this
+			// is the on-screen travel distance, not a safety margin. Using
+			// the real (larger) font-metrics height here too, on top of it
+			// already being reflected in reserveSpaceForFloatingHint's
+			// reserved space, moved the label noticeably higher than the
+			// intended "just above the border" resting spot. The real
+			// per-font height still applies physically to the rendered
+			// label regardless of what's used here, which is what was
+			// actually clipping before — reserveSpaceForFloatingHint's
+			// extra buffer covers that gap without also pushing the
+			// travel distance itself further than needed.
 			val floatedLabelHalfHeight = (target.textSize * HINT_FLOATING_SCALE) / 2f
 			when (mHintFormat) {
 				// Move the label from its resting position (vertically
@@ -2142,7 +2335,7 @@ class ComponentTextInputLayout(
 		// views the *resting* label footprint would otherwise overlap are
 		// only hidden while the hint is enabled AND actually resting on top
 		// of them — never just because the hint happens to be disabled.
-		val iconOverlapAlpha = if (mHintEnable && !isFloating) 0f else 1f
+		val iconOverlapAlpha = if (hintResting) 0f else 1f
 
 		mHintAnimator?.cancel()
 
@@ -2163,6 +2356,13 @@ class ComponentTextInputLayout(
 		val startSuffixAlpha = view_binding.suffix.alpha
 		val startImageEndAlpha = view_binding.imageEnd.alpha
 
+		// Only what the anchors cover follows iconOverlapAlpha; the rest
+		// always returns to fully visible (also when an anchor changed).
+		val targetPrefixAlpha = if (hintCoversPrefix()) iconOverlapAlpha else 1f
+		val targetImageStartAlpha = if (hintCoversStartIcon()) iconOverlapAlpha else 1f
+		val targetSuffixAlpha = if (hintCoversSuffix()) iconOverlapAlpha else 1f
+		val targetImageEndAlpha = if (hintCoversEndIcon()) iconOverlapAlpha else 1f
+
 		mHintAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
 			duration = HINT_ANIMATION_DURATION_MS
 			interpolator = FastOutSlowInInterpolator()
@@ -2173,67 +2373,96 @@ class ComponentTextInputLayout(
 				label.translationY =
 					startTranslationY + fraction * (targetTranslationY - startTranslationY)
 				label.alpha = startAlpha + fraction * (targetLabelAlpha - startAlpha)
-				when (mHintStartAnchor) {
-					HintStartAnchor.START_LAYOUT -> {
-						view_binding.prefix.alpha =
-							startPrefixAlpha + fraction * (iconOverlapAlpha - startPrefixAlpha)
-						view_binding.imageStart.alpha =
-							startImageStartAlpha + fraction * (iconOverlapAlpha - startImageStartAlpha)
+				view_binding.prefix.alpha =
+					startPrefixAlpha + fraction * (targetPrefixAlpha - startPrefixAlpha)
+				view_binding.imageStart.alpha =
+					startImageStartAlpha + fraction * (targetImageStartAlpha - startImageStartAlpha)
+				view_binding.suffix.alpha =
+					startSuffixAlpha + fraction * (targetSuffixAlpha - startSuffixAlpha)
+				view_binding.imageEnd.alpha =
+					startImageEndAlpha + fraction * (targetImageEndAlpha - startImageEndAlpha)
+			}
+			if (deferGone) {
+				addListener(object : AnimatorListenerAdapter() {
+					private var cancelled = false
+
+					override fun onAnimationCancel(animation: Animator) {
+						cancelled = true
 					}
 
-					HintStartAnchor.START_ICON -> {
-						view_binding.prefix.alpha =
-							startPrefixAlpha + fraction * (iconOverlapAlpha - startPrefixAlpha)
+					override fun onAnimationEnd(animation: Animator) {
+						// A cancelled run means a newer update already decided
+						// the final visibility; don't overwrite it.
+						if (!cancelled) applyHintOverlapVisibility(resting = true)
 					}
-
-					else -> Unit
-				}
-				when (mHintEndAnchor) {
-					HintEndAnchor.END_LAYOUT -> {
-						view_binding.suffix.alpha =
-							startSuffixAlpha + fraction * (iconOverlapAlpha - startSuffixAlpha)
-						view_binding.imageEnd.alpha =
-							startImageEndAlpha + fraction * (iconOverlapAlpha - startImageEndAlpha)
-					}
-
-					HintEndAnchor.END_ICON -> {
-						view_binding.suffix.alpha =
-							startSuffixAlpha + fraction * (iconOverlapAlpha - startSuffixAlpha)
-					}
-
-					else -> Unit
-				}
+				})
 			}
 			start()
 		}
 	}
 
 	/**
-	 * Applies [alpha] directly (no animation) to whichever prefix/suffix/icon
-	 * views [mHintStartAnchor] / [mHintEndAnchor] currently say the resting
-	 * hint label covers. Shared by [updateFloatingHintLabel]'s non-animated
-	 * path so the "instant" and animated code paths agree on exactly which
-	 * views react to which anchor, instead of two separately maintained
-	 * `when` blocks drifting apart (which is what caused this function's
-	 * `START_ICON` / `END_ICON` bugs in the first place).
+	 * `true` while the hint is enabled and resting over the [EditText] (no
+	 * text, no focus). Same condition [updateFloatingHintLabel] uses, for
+	 * callers that don't go through it.
+	 */
+	private fun isHintResting(): Boolean {
+		val target = mEditText ?: return false
+		return mHintEnable && target.text.isNullOrEmpty() && !target.isFocused
+	}
+
+	/**
+	 * Sets the visibility of the prefix, suffix and both icons: a view is
+	 * [VISIBLE] only if its own `enable` flag is on **and** it isn't
+	 * covered by the resting hint ([hintCoversPrefix] & co.); otherwise
+	 * [GONE]. Being GONE (instead of just alpha 0) is what lets touches
+	 * reach the [EditText] under the hint instead of the invisible views.
+	 *
+	 * With [keepCoveredVisible], a covered view keeps its *current*
+	 * visibility instead of becoming GONE — used while it is still fading
+	 * out; the caller applies the real GONE when the animation ends. A
+	 * view that is already GONE stays GONE.
+	 *
+	 * Every place that writes one of these four visibilities must go
+	 * through here, or it would bring back a view the hint is covering.
+	 */
+	private fun applyHintOverlapVisibility(
+		resting: Boolean,
+		keepCoveredVisible: Boolean = false
+	) {
+		fun resolve(view: View, enabled: Boolean, covered: Boolean): Int = when {
+			!enabled -> GONE
+			resting && covered -> if (keepCoveredVisible) view.visibility else GONE
+			else -> VISIBLE
+		}
+
+		view_binding.imageStart.visibility =
+			resolve(view_binding.imageStart, mStartIconEnable, hintCoversStartIcon())
+		view_binding.prefix.visibility =
+			resolve(view_binding.prefix, mPrefixEnable, hintCoversPrefix())
+		view_binding.suffix.visibility =
+			resolve(view_binding.suffix, mSuffixEnable, hintCoversSuffix())
+		view_binding.imageEnd.visibility =
+			resolve(view_binding.imageEnd, mEndIconEnable, hintCoversEndIcon())
+	}
+
+	/**
+	 * Applies [alpha] directly (no animation) to the views the resting hint
+	 * covers, and restores full alpha on the ones it doesn't:
+	 *
+	 * - Start: `START_LAYOUT` → icon + prefix, `START_ICON` → prefix only,
+	 *   `PREFIX` / `null` → nothing.
+	 * - End: `END_LAYOUT` → suffix + icon, `END_ICON` → suffix only,
+	 *   `SUFFIX` / `null` → nothing.
+	 *
+	 * Uses the same `hintCovers*()` predicates as the animated path in
+	 * [updateFloatingHintLabel], so both agree on what each anchor hides.
 	 */
 	private fun applyHintOverlapAlpha(alpha: Float) {
-		when (mHintStartAnchor) {
-			HintStartAnchor.START_LAYOUT, HintStartAnchor.START_ICON -> {
-				view_binding.prefix.alpha = alpha
-				view_binding.imageStart.alpha = alpha
-			}
-
-			else -> Unit
-		}
-		when (mHintEndAnchor) {
-			HintEndAnchor.END_LAYOUT, HintEndAnchor.END_ICON -> {
-				view_binding.suffix.alpha = alpha
-				view_binding.imageEnd.alpha = alpha
-			}
-
-			else -> Unit
-		}
+		view_binding.prefix.alpha = if (hintCoversPrefix()) alpha else 1f
+		view_binding.imageStart.alpha = if (hintCoversStartIcon()) alpha else 1f
+		view_binding.suffix.alpha = if (hintCoversSuffix()) alpha else 1f
+		view_binding.imageEnd.alpha = if (hintCoversEndIcon()) alpha else 1f
 	}
 
 	/** Shows or hides the character counter. */
@@ -2386,6 +2615,22 @@ class ComponentTextInputLayout(
 	/** Returns whether the field is currently showing the error state. */
 	fun isErrorEnabled(): Boolean = mInErrorState
 
+	private fun buildErrorBorderDrawable(@ColorInt color: Int): Drawable {
+		val drawable = ContextCompat.getDrawable(
+			context,
+			R.drawable.ef_component_material_text_input_layout_outline_error
+		)?.mutate() as? GradientDrawable
+			?: return GradientDrawable() // fallback defensivo, no debería pasar
+
+		drawable.setStroke(2.dp, color)
+		return drawable
+	}
+
+	private fun applyErrorBorderColor() {
+		val color = (mErrorTextColor ?: ColorStateList.valueOf(mColorError)).defaultColor
+		view_binding.container.background = buildErrorBorderDrawable(color)
+	}
+
 	/**
 	 * Refreshes the message row (helper/error text), the field border and
 	 * the prefix/suffix/icon colors, following M3: while [bool] is `true`,
@@ -2408,23 +2653,30 @@ class ComponentTextInputLayout(
 			// the theme color when it's left unset.
 			val errorColor = mErrorTextColor ?: ColorStateList.valueOf(mColorError)
 			applyDividerColor(errorColor)
+			applyErrorBorderColor()
 			view_binding.message.text = mErrorText
 			view_binding.message.visibility = VISIBLE
+			view_binding.error.visibility = VISIBLE
 			view_binding.message.setTextColor(errorColor)
 			view_binding.counter.setTextColor(errorColor)
 			view_binding.prefix.setTextColor(errorColor)
 			view_binding.suffix.setTextColor(errorColor)
+			mFloatingHintLabel?.setTextColor(errorColor)
+			view_binding.error.imageTintList = errorColor
 			view_binding.start.foregroundTintList = errorColor
 			view_binding.end.foregroundTintList = errorColor
 		} else {
 			val focused = mEditText?.isFocused == true
 			applyDividerColor(if (focused) mColorPrimary else mColorOutline)
+			installBorderSelector()
 			view_binding.message.text = mHelperText
 			view_binding.message.visibility = if (mHelperEnable) VISIBLE else GONE
+			view_binding.error.visibility = INVISIBLE
 			mHelperTextColor?.let { view_binding.message.setTextColor(it) }
 			mCounterTextColor?.let { view_binding.counter.setTextColor(it) }
 			mPrefixTextColor?.let { view_binding.prefix.setTextColor(it) }
 			mSuffixTextColor?.let { view_binding.suffix.setTextColor(it) }
+			mFloatingHintLabel?.setTextColor(mHintTextColor)
 			view_binding.start.foregroundTintList = mStartIconTint
 			view_binding.end.foregroundTintList = mEndIconTint
 		}
@@ -2481,7 +2733,7 @@ class ComponentTextInputLayout(
 
 	/** Refreshes only the leading icon's drawable, tint and visibility. */
 	private fun applyStartIcon() {
-		view_binding.imageStart.visibility = if (mStartIconEnable) VISIBLE else GONE
+		applyHintOverlapVisibility(isHintResting())
 		view_binding.imageStart.setImageDrawable(mStartIcon)
 		mStartIconTint?.let { view_binding.imageStart.imageTintList = it }
 	}
@@ -2561,7 +2813,7 @@ class ComponentTextInputLayout(
 
 	/** Refreshes only the trailing icon's drawable, tint and visibility. */
 	private fun applyEndIcon() {
-		view_binding.imageEnd.visibility = if (mEndIconEnable) VISIBLE else GONE
+		applyHintOverlapVisibility(isHintResting())
 		view_binding.imageEnd.setImageDrawable(mEndIcon)
 		mEndIconTint?.let { view_binding.imageEnd.imageTintList = it }
 	}
@@ -2762,6 +3014,9 @@ class ComponentTextInputLayout(
 			child.id = View.generateViewId()
 		}
 
+		// Remember the color the caller gave the EditText (if any) before
+		// it's forced transparent: the hint's cutout background matches it.
+		mEditTextBackgroundColor = child.solidBackgroundColorOrNull()
 		child.setBackgroundColor(context.getColor(android.R.color.transparent))
 
 		if (child is AutoCompleteTextView) {
@@ -2792,7 +3047,7 @@ class ComponentTextInputLayout(
 				setBorderFocusedState(hasFocus)
 				applyDividerColor(if (hasFocus) mColorPrimary else mColorOutline)
 			}
-			updateFloatingHintLabel(child, animate = hasFocus)
+			updateFloatingHintLabel(child, animate = true)
 			updatePlaceholderVisibility(child, animate = hasFocus)
 		}
 
@@ -2805,7 +3060,13 @@ class ComponentTextInputLayout(
 		setupCounterTextWatcher(child)
 		refreshCounterText()
 		installAccessibilityDelegate(child)
-		child.doOnTextChanged { _, _, _, _ ->
+		child.doOnTextChanged { text, _, _, _ ->
+			if (text.isNullOrEmpty()) {
+				updateFloatingHintLabel(child, animate = true)
+				updatePlaceholderVisibility(child, animate = false)
+				return@doOnTextChanged
+			}
+
 			updateFloatingHintLabel(child, animate = true)
 			updatePlaceholderVisibility(child, animate = true)
 		}
@@ -2842,6 +3103,95 @@ class ComponentTextInputLayout(
 		mPlaceholderAnimator?.cancel()
 		mPlaceholderAnimator = null
 		mHintLayoutListener?.let { listener -> mEditText?.removeOnLayoutChangeListener(listener) }
+	}
+
+	/**
+	 * Saves the runtime state a *user* (or app-side validation) can change
+	 * on this specific instance by interacting with it — the current
+	 * prefix/suffix dropdown selection and the error indicator — across
+	 * configuration changes and process death, the same way a native
+	 * `TextInputLayout` does.
+	 *
+	 * Everything else (hint text, icons, gravity, formats, etc.) comes
+	 * from XML attrs or explicit setter calls the hosting
+	 * Activity/Fragment makes, which is expected to reapply them on its
+	 * own; duplicating the whole attribute surface here would just be
+	 * re-storing what the caller already owns.
+	 *
+	 * As with any [BaseSavedState]-based view, this only actually engages
+	 * if the component itself has a stable `android:id` in its XML — a
+	 * `View.NO_ID` container is skipped entirely by
+	 * `ViewGroup.dispatchSaveInstanceState`'s per-child `SparseArray`,
+	 * the same stable-ID requirement noted for `FragmentManager`
+	 * containers elsewhere in this codebase.
+	 */
+	override fun onSaveInstanceState(): Parcelable {
+		val superState = super.onSaveInstanceState()
+		return SavedState(superState).apply {
+			prefixText = mPrefixText
+			suffixText = mSuffixText
+			inErrorState = mInErrorState
+			errorText = mErrorText
+		}
+	}
+
+	/** Restores what [onSaveInstanceState] saved. See its KDoc for scope. */
+	override fun onRestoreInstanceState(state: Parcelable?) {
+		if (state !is SavedState) {
+			super.onRestoreInstanceState(state)
+			return
+		}
+		super.onRestoreInstanceState(state.superState)
+
+		mPrefixText = state.prefixText
+		mSuffixText = state.suffixText
+		applyPrefix()
+		applySuffix()
+
+		mInErrorState = state.inErrorState
+		mErrorText = state.errorText
+		error(mInErrorState)
+	}
+
+	/**
+	 * Parcelable payload for [onSaveInstanceState] / [onRestoreInstanceState].
+	 * See [onSaveInstanceState]'s KDoc for exactly what's carried and why.
+	 */
+	private class SavedState : BaseSavedState {
+
+		var prefixText: String? = null
+		var suffixText: String? = null
+		var inErrorState: Boolean = false
+		var errorText: String = ""
+
+		constructor(superState: Parcelable?) : super(superState)
+
+		constructor(source: Parcel) : super(source) {
+			prefixText = source.readString()
+			suffixText = source.readString()
+			inErrorState = source.readInt() == 1
+			errorText = source.readString() ?: ""
+		}
+
+		override fun writeToParcel(out: Parcel, flags: Int) {
+			super.writeToParcel(out, flags)
+			out.writeString(prefixText)
+			out.writeString(suffixText)
+			out.writeInt(if (inErrorState) 1 else 0)
+			out.writeString(errorText)
+		}
+
+		companion object {
+			@JvmField
+			val CREATOR = object : Parcelable.ClassLoaderCreator<SavedState> {
+				override fun createFromParcel(source: Parcel, loader: ClassLoader?): SavedState =
+					SavedState(source)
+
+				override fun createFromParcel(source: Parcel): SavedState = SavedState(source)
+
+				override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
+			}
+		}
 	}
 
 	override fun setEnabled(enabled: Boolean) {

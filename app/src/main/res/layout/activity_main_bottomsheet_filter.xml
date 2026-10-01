@@ -6,7 +6,7 @@
 	android:paddingBottom="12dp">
 
 	<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
-		android:id="@+id/divider"
+		android:id="@+id/project_divider"
 		android:layout_width="64dp"
 		android:layout_height="4dp"
 		android:layout_marginTop="16dp"
@@ -35,7 +35,7 @@
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintHorizontal_bias="0.0"
 		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toBottomOf="@+id/divider">
+		app:layout_constraintTop_toBottomOf="@+id/project_divider">
 
 		<com.google.android.material.textfield.TextInputEditText
 			android:id="@+id/name_filter"

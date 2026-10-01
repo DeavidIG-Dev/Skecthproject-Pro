@@ -232,40 +232,39 @@
 
 	<declare-styleable name="FloatingActionButtonMenu">
 
-		<!-- Icon shown on the trigger while the menu is open. Falls back to app:icon if unset. -->
 		<attr name="android:icon" format="reference" />
 
-		<!-- Text shown on the trigger while the menu is open. Falls back to android:text if unset. -->
 		<attr name="android:text" format="string" />
-
 		<attr name="android:textColor" format="reference|color" />
 
-		<!-- Icon shown on the trigger while the menu is open. Falls back to app:icon if unset. -->
-		<attr name="iconMenuVisible" format="reference" />
+		<attr name="android:backgroundTint" format="reference|color" />
 
-		<!-- Text shown on the trigger while the menu is open. Falls back to android:text if unset. -->
-		<attr name="textMenuVisible" format="string" />
+		<attr name="shrunkRippleColor" format="reference|color" />
+		<attr name="shrunkCornerRadius" format="dimension" />
 
-		<!-- Whether the trigger opens the menu on click or long-click. Default: click. -->
+		<attr name="extendRippleColor" format="reference|color" />
+		<attr name="extendCornerRadius" format="dimension" />
+
+		<attr name="icon" />
+
+		<attr name="text" format="string" />
+		<attr name="textColor" format="reference|color" />
+
+		<attr name="backgroundTint" format="reference|color" />
+
+		<attr name="rippleColor" />
+		<attr name="cornerRadius" format="dimension" />
+
 		<attr name="activeMenuBy" format="enum">
 			<enum name="click" value="0" />
 			<enum name="longclick" value="1" />
 		</attr>
 
-		<!-- Whether tapping an item automatically closes the menu. Default: true. -->
 		<attr name="closeOnItemClick" format="boolean" />
 
-		<!-- Whether a dark scrim is drawn behind the open items. Default: true. -->
 		<attr name="scrimEnabled" format="boolean" />
-
-		<!-- Scrim color, used when scrimEnabled is true. Defaults to colorSurfaceDim from the theme. -->
 		<attr name="scrimColor" format="color" />
 
-		<!--
-			Direction the items cascade from the trigger. AUTO (default) is recomputed every
-			time the menu opens, based on available screen space in both axes (vertical first,
-			horizontal as fallback) — see FloatingActionButtonMenu.computeAutoOrientation().
-		-->
 		<attr name="menuOrientation" format="enum">
 			<enum name="top" value="0" />
 			<enum name="bottom" value="1" />
@@ -274,14 +273,32 @@
 			<enum name="auto" value="4" />
 		</attr>
 
-		<attr name="triggerRippleColor" format="color" />
-		<attr name="triggerCornerRadius" format="dimension" />
-
 		<attr name="iconSide" format="enum">
 			<enum name="start" value="0" />
 			<enum name="end" value="1" />
 		</attr>
 
+	</declare-styleable>
+
+	<attr name="componentFloatingBarStyle" format="reference" />
+
+	<declare-styleable name="ComponentFloatingBar">
+		<!-- horizontal (default) or vertical. -->
+		<attr name="android:orientation" />
+
+		<!-- Menu shown before the FAB/EFAB (left, or top when vertical).
+			 If leftMenu/rightMenu are already defined in another attrs file
+			 (e.g. ComponentSearchBar), delete the format here to avoid a duplicate. -->
+		<attr name="leftMenu" />
+		<!-- Menu shown after the FAB/EFAB (right, or bottom when vertical). -->
+		<attr name="rightMenu" />
+
+		<!-- Pill background. Defaults to ?attr/colorSurfaceContainer. -->
+		<attr name="floatingBarContainerColor" format="color" />
+		<!-- Menu icon tint. Defaults to ?attr/colorOnSurfaceVariant (38% when disabled). -->
+		<attr name="floatingBarIconTint" format="color" />
+		<!-- Width of a plain FAB relative to its height. 1 = circle, default 1.5 (capsule). -->
+		<attr name="floatingBarFabWidthRatio" format="float" />
 	</declare-styleable>
 
 </resources>

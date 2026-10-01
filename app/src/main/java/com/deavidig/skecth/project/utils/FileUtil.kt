@@ -52,7 +52,11 @@ import java.util.zip.ZipInputStream
 object FileUtil {
 	val separator = File.separator
 
-	val DirectoryOfProject = externalStorageDir + separator + "Sketchproject Pro"
+	val PublicDirectoryOfProject =
+		externalStorageDir + separator + "Sketchproject Pro" // externalStorageDir + separator + "Sketchproject Pro"
+
+	val PrivateDirectoryOfProject =
+		internalStorageDir
 
 	fun getFileSize(file: File?): Long {
 		if (file == null || !file.exists()) {
@@ -421,6 +425,9 @@ object FileUtil {
 
 	val externalStorageDir: String
 		get() = Environment.getExternalStorageDirectory().absolutePath
+
+	val internalStorageDir: String
+		get() = Environment.getDataDirectory().absolutePath
 
 	fun getPackageDataDir(context: Context): String {
 		return context.getExternalFilesDir(null)!!.absolutePath

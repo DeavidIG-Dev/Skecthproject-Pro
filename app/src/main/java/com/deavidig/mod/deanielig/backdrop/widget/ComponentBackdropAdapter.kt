@@ -7,6 +7,9 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.FragmentManager
+import com.deavidig.mod.deanielig.backdrop.widget.ComponentBackdropAdapter.Companion.BACK_LAYER
+import com.deavidig.mod.deanielig.backdrop.widget.ComponentBackdropAdapter.Companion.ComponentLayoutBackdropAdapter.ViewFragment.Companion.newInstance
+import com.deavidig.mod.deanielig.backdrop.widget.ComponentBackdropAdapter.Companion.FRONT_LAYER
 
 /**
  * Supplies the two [Fragment] instances hosted by a [ComponentBackDropLayout]:
@@ -105,8 +108,10 @@ public abstract class ComponentBackdropAdapter private constructor(
 		/** Position of the front layer fragment, normally covering the back layer. */
 		public const val FRONT_LAYER: Int = 1
 
-		private const val BACK_LAYER_TAG = "com.deavidig.mod.deaniel.backdrop.widget.ComponentBackdropLayout.BACKDROP_BACK_LAYER"
-		private const val FRONT_LAYER_TAG = "com.deavidig.mod.deaniel.backdrop.widget.ComponentBackdropLayout.BACKDROP_FRONT_LAYER"
+		private const val BACK_LAYER_TAG =
+			"com.deavidig.mod.deaniel.backdrop.widget.ComponentBackdropLayout.BACKDROP_BACK_LAYER"
+		private const val FRONT_LAYER_TAG =
+			"com.deavidig.mod.deaniel.backdrop.widget.ComponentBackdropLayout.BACKDROP_FRONT_LAYER"
 
 		abstract class ComponentBaseBackdropAdapter private constructor(
 			private val fragmentManager: FragmentManager
@@ -133,7 +138,8 @@ public abstract class ComponentBackdropAdapter private constructor(
 			 *
 			 * @param position Either [BACK_LAYER] or [FRONT_LAYER].
 			 */
-			final override fun createFragment(position: Int): Fragment = if (position == FRONT_LAYER) createFrontFragment() else createBackFragment()
+			final override fun createFragment(position: Int): Fragment =
+				if (position == FRONT_LAYER) createFrontFragment() else createBackFragment()
 
 			abstract fun createBackFragment(): Fragment
 
@@ -166,15 +172,64 @@ public abstract class ComponentBackdropAdapter private constructor(
 			 *
 			 * @param position Either [BACK_LAYER] or [FRONT_LAYER].
 			 */
-			final override fun createFragment(position: Int): Fragment = if (position == FRONT_LAYER) ViewFragment(createFrontFragment()) else ViewFragment(createBackFragment())
+			final override fun createFragment(position: Int): Fragment =
+				ViewFragment.newInstance(
+					position,
+					if (position == FRONT_LAYER) createFrontFragment() else createBackFragment()
+				)
 
-			private class ViewFragment(private val view: View) : Fragment() {
+			/**
+			 * Hosts a plain [View] (rather than a nested [Fragment]) as a
+			 * backdrop layer.
+			 *
+			 * The [View] handed to [newInstance] is only usable for the
+			 * *first* creation: a [View] can't be put in a [Bundle], so it is
+			 * never part of saved instance state. Whenever [FragmentManager]
+			 * itself recreates this fragment — on a configuration change or a
+			 * process restart, via its own no-arg-constructor reflection,
+			 * bypassing [createFragment] entirely — [providedView] is `null`
+			 * and [onCreateView] instead re-derives the view by asking the
+			 * currently attached [ComponentLayoutBackdropAdapter] to build it
+			 * again from [position]. This requires the host to have already
+			 * reassigned [ComponentBackdropLayout.adapter] by the time
+			 * [FragmentManager] restores this fragment's view (i.e. set it in
+			 * `onCreate()`, as shown in [ComponentBackdropAdapter]'s class
+			 * doc) — otherwise [onCreateView] fails fast with an
+			 * [IllegalStateException] instead of silently showing nothing.
+			 */
+			public class ViewFragment : Fragment() {
+
+				private var providedView: View? = null
+
 				override fun onCreateView(
 					inflater: LayoutInflater,
 					container: ViewGroup?,
 					savedInstanceState: Bundle?
 				): View {
-					return view
+					providedView?.let { return it }
+
+					val position = requireArguments().getInt(ARG_POSITION)
+					val backdrop = container?.parent as? ComponentBackdropLayout
+					val adapter = backdrop?.adapter as? ComponentLayoutBackdropAdapter
+					checkNotNull(adapter) {
+						"ViewFragment was recreated by FragmentManager (e.g. after a " +
+								"configuration change) but found no ComponentLayoutBackdropAdapter " +
+								"attached to its ComponentBackdropLayout yet. Re-set " +
+								"ComponentBackdropLayout.adapter before FragmentManager restores " +
+								"fragment state, e.g. in onCreate()."
+					}
+					return if (position == FRONT_LAYER) adapter.createFrontFragment() else adapter.createBackFragment()
+				}
+
+				internal companion object {
+					private const val ARG_POSITION =
+						"com.deavidig.mod.deaniel.backdrop.widget.ComponentBackdropLayout.ARG_VIEW_FRAGMENT_POSITION"
+
+					internal fun newInstance(position: Int, view: View): ViewFragment =
+						ViewFragment().apply {
+							providedView = view
+							arguments = Bundle().apply { putInt(ARG_POSITION, position) }
+						}
 				}
 			}
 

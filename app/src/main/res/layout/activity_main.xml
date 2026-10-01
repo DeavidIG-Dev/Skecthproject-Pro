@@ -15,38 +15,71 @@
 			android:id="@+id/barSearch"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:paddingVertical="12dp"
 			android:hint="Enter project name..."
+			android:paddingVertical="12dp"
+			app:pillElevation="0dp"
+			app:pillMenuRight="@menu/activity_project_creator_back_searchbar_right_menu"
 			app:title="Type here to Search Project"
 			app:titleTextSize="18dp" />
 
-		<com.google.android.material.tabs.TabLayout
-			android:id="@+id/tabFilter"
+		<androidx.constraintlayout.widget.ConstraintLayout
 			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			app:tabGravity="center"
-			app:tabMode="scrollable">
+			android:layout_height="wrap_content">
 
-			<com.google.android.material.tabs.TabItem
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:text="Main" />
+			<com.google.android.material.tabs.TabLayout
+				android:id="@+id/tabFilter"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_marginStart="16dp"
+				android:layout_marginEnd="4dp"
+				android:background="@drawable/tab_background"
+				android:paddingHorizontal="8dp"
+				app:layout_constraintBottom_toBottomOf="parent"
+				app:layout_constraintEnd_toStartOf="@+id/tabsButton"
+				app:layout_constraintStart_toStartOf="parent"
+				app:layout_constraintTop_toTopOf="parent"
+				app:tabGravity="start"
+				app:tabIconTint="@color/tab_icon_m3_selector"
+				app:tabIndicator="@drawable/tab_indicator_background"
+				app:tabIndicatorAnimationDuration="750"
+				app:tabIndicatorAnimationMode="elastic"
+				app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
+				app:tabIndicatorFullWidth="false"
+				app:tabIndicatorGravity="stretch"
+				app:tabInlineLabel="true"
+				app:tabMode="scrollable"
+				app:tabRippleColor="@null"
+				app:tabTextColor="@color/tab_icon_m3_selector">
 
-			<com.google.android.material.tabs.TabItem
-				android:layout_width="match_parent"
-				android:layout_height="match_parent"
-				android:icon="@drawable/ic_add_24" />
+				<com.google.android.material.tabs.TabItem
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:text="Main" />
 
-		</com.google.android.material.tabs.TabLayout>
+			</com.google.android.material.tabs.TabLayout>
+
+			<com.deavidig.mod.deanielig.floatingbar.widget.ComponentFloatingBar
+				android:id="@+id/tabsButton"
+				android:layout_width="wrap_content"
+				android:layout_height="0dp"
+				android:layout_gravity="bottom"
+				android:layout_marginEnd="16dp"
+				app:layout_constraintBottom_toBottomOf="@+id/tabFilter"
+				app:layout_constraintEnd_toEndOf="parent"
+				app:layout_constraintTop_toTopOf="@+id/tabFilter"
+				app:rightMenu="@menu/activity_main_floatingbar_left_menu" />
+
+		</androidx.constraintlayout.widget.ConstraintLayout>
 
 	</com.google.android.material.appbar.AppBarLayout>
 
 	<androidx.recyclerview.widget.RecyclerView
+		android:id="@+id/project_list"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
 		android:padding="8dp"
-		app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior"
 		app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+		app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior"
 		tools:itemCount="15"
 		tools:listitem="@layout/activity_main_recyclerview_project" />
 
@@ -64,20 +97,19 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="end|bottom"
-		android:text="New Project"
 		android:icon="@drawable/ic_add_24"
+		android:text="New Project"
+		app:activeMenuBy="longclick"
 		app:iconSide="start"
 		app:menuOrientation="top"
-		app:activeMenuBy="longclick"
 		app:scrimEnabled="false">
 
 		<com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonItem
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			app:icon="@drawable/ic_settings_backup_restore_24"
-			android:text="Restore" />
+			android:text="Restore"
+			app:icon="@drawable/ic_settings_backup_restore_24" />
 
 	</com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonMenu>
-
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

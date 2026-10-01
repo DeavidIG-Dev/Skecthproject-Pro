@@ -27,6 +27,8 @@ open class ComponentPermissionAppCompatActivity :
 	private var accessFile = false
 	private lateinit var sharedPreferences: SharedPreferences
 
+	fun isFileAccess(): Boolean = accessFile
+
 	private val openDocumentTreeLauncher =
 		registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
 

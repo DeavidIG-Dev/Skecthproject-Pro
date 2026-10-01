@@ -95,8 +95,40 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 	}
 
 	private var triggerCornerRadiusValue: Float = 16f.dp
+
+	// Radio de esquina explícito para el estado contraído (icono solo). Si es null, se usa el radio base.
+	private var shrunkCornerRadiusValue: Float? = null
+	fun getShrunkCornerRadius(): Float? = shrunkCornerRadiusValue
+	fun setShrunkCornerRadius(radiusPx: Float?): FloatingActionButtonMenu {
+		shrunkCornerRadiusValue = radiusPx
+		invalidate()
+		return this
+	}
+
+	// Radio de esquina explícito para el estado extendido (icono + texto). Si es null, se usa el radio base.
+	private var extendCornerRadiusValue: Float? = null
+	fun getExtendCornerRadius(): Float? = extendCornerRadiusValue
+	fun setExtendCornerRadius(radiusPx: Float?): FloatingActionButtonMenu {
+		extendCornerRadiusValue = radiusPx
+		invalidate()
+		return this
+	}
+
+	/**
+	 * Si se definió shrunkCornerRadius y/o extendCornerRadius, el radio se interpola junto con
+	 * triggerWidthFraction (la misma fracción que anima el ancho contraído/extendido), para que
+	 * la forma cambie en sincronía con el ancho. Si ninguno de los dos se definió, se conserva el
+	 * comportamiento previo de un único radio constante (o circular si triggerCornerRadiusValue < 0).
+	 */
 	private val resolvedTriggerCornerRadius: Float
-		get() = if (triggerCornerRadiusValue >= 0f) triggerCornerRadiusValue else triggerHeightPx / 2f
+		get() {
+			val baseRadius =
+				if (triggerCornerRadiusValue >= 0f) triggerCornerRadiusValue else triggerHeightPx / 2f
+			if (shrunkCornerRadiusValue == null && extendCornerRadiusValue == null) return baseRadius
+			val shrunkRadius = shrunkCornerRadiusValue ?: baseRadius
+			val extendRadius = extendCornerRadiusValue ?: baseRadius
+			return shrunkRadius + (extendRadius - shrunkRadius) * triggerWidthFraction
+		}
 
 	fun getTriggerCornerRadius(): Float = triggerCornerRadiusValue
 	fun setTriggerCornerRadius(radiusPx: Float): FloatingActionButtonMenu {
@@ -119,6 +151,19 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 		invalidate()
 		return this
 	}
+
+	// Tinte de fondo mientras el menú está abierto. Si no se define, se usa triggerBackgroundTintValue.
+	private var triggerBackgroundTintVisibleValue: ColorStateList? = null
+	fun getTriggerBackgroundTintVisible(): ColorStateList? = triggerBackgroundTintVisibleValue
+	fun setTriggerBackgroundTintVisible(tint: ColorStateList?): FloatingActionButtonMenu {
+		triggerBackgroundTintVisibleValue = tint
+		invalidate()
+		return this
+	}
+
+	private val resolvedTriggerBackgroundTint: ColorStateList
+		get() = (if (menuOpen) triggerBackgroundTintVisibleValue else null)
+			?: triggerBackgroundTintValue
 
 	private var triggerIconTintValue: ColorStateList = ColorStateList.valueOf(
 		MaterialColors.getColor(
@@ -149,6 +194,18 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 		return this
 	}
 
+	// Color de texto mientras el menú está abierto. Si no se define, se usa textColorValue.
+	private var textColorVisibleValue: Int? = null
+	fun getTriggerTextColorVisible(): Int? = textColorVisibleValue
+	fun setTextColorVisible(color: Int?): FloatingActionButtonMenu {
+		textColorVisibleValue = color
+		invalidate()
+		return this
+	}
+
+	private val resolvedTextColor: Int
+		get() = (if (menuOpen) textColorVisibleValue else null) ?: textColorValue
+
 	// M3 Ripple: colorOnPrimaryContainer al 12% de alpha (0.12f)
 	private var triggerRippleColorValue: Int = ColorUtils.setAlphaComponent(
 		MaterialColors.getColor(
@@ -165,6 +222,29 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 		invalidate()
 		return this
 	}
+
+	// Color de ripple explícito para el estado contraído (icono solo).
+	private var shrunkRippleColorValue: Int? = null
+	fun getShrunkRippleColor(): Int? = shrunkRippleColorValue
+	fun setShrunkRippleColor(color: Int?): FloatingActionButtonMenu {
+		shrunkRippleColorValue = color
+		invalidate()
+		return this
+	}
+
+	// Color de ripple explícito para el estado extendido (icono + texto).
+	private var extendRippleColorValue: Int? = null
+	fun getExtendRippleColor(): Int? = extendRippleColorValue
+	fun setExtendRippleColor(color: Int?): FloatingActionButtonMenu {
+		extendRippleColorValue = color
+		invalidate()
+		return this
+	}
+
+	/** Prioriza el override de ripple del estado actual (contraído/extendido); si no hay, usa el color base. */
+	private val resolvedTriggerRippleColor: Int
+		get() = (if (triggerExtended) extendRippleColorValue else shrunkRippleColorValue)
+			?: triggerRippleColorValue
 
 	private fun updateM3RippleColor() {
 		val onColor =
@@ -437,8 +517,8 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 		context.obtainStyledAttributes(attrs, R.styleable.FloatingActionButtonMenu, defStyleAttr, 0)
 			.apply {
 				try {
-					setIconMenuVisible(getDrawable(R.styleable.FloatingActionButtonMenu_iconMenuVisible))
-					setTextMenuVisible(getString(R.styleable.FloatingActionButtonMenu_textMenuVisible))
+					setIconMenuVisible(getDrawable(R.styleable.FloatingActionButtonMenu_icon))
+					setTextMenuVisible(getString(R.styleable.FloatingActionButtonMenu_text))
 					setIconMenu(getDrawable(R.styleable.FloatingActionButtonMenu_android_icon))
 					setTextMenu(getString(R.styleable.FloatingActionButtonMenu_android_text))
 					setTextColor(
@@ -447,6 +527,32 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 							getTriggerTextColor()
 						)
 					)
+					if (hasValue(R.styleable.FloatingActionButtonMenu_textColor)) {
+						setTextColorVisible(
+							getColor(
+								R.styleable.FloatingActionButtonMenu_textColor,
+								getTriggerTextColor()
+							)
+						)
+					}
+					setTriggerBackgroundTint(
+						ColorStateList.valueOf(
+							getColor(
+								R.styleable.FloatingActionButtonMenu_android_backgroundTint,
+								getTriggerBackgroundTint().defaultColor
+							)
+						)
+					)
+					if (hasValue(R.styleable.FloatingActionButtonMenu_backgroundTint)) {
+						setTriggerBackgroundTintVisible(
+							ColorStateList.valueOf(
+								getColor(
+									R.styleable.FloatingActionButtonMenu_backgroundTint,
+									getTriggerBackgroundTint().defaultColor
+								)
+							)
+						)
+					}
 					setActiveMenuBy(
 						ActivationMode.entries.toTypedArray()[getInt(
 							R.styleable.FloatingActionButtonMenu_activeMenuBy,
@@ -479,16 +585,48 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 					)
 					setTriggerColor(
 						getColor(
-							R.styleable.FloatingActionButtonMenu_triggerRippleColor,
+							R.styleable.FloatingActionButtonMenu_rippleColor,
 							getTriggerRippleColor()
 						)
 					)
 					setTriggerCornerRadius(
 						getDimension(
-							R.styleable.FloatingActionButtonMenu_triggerCornerRadius,
+							R.styleable.FloatingActionButtonMenu_cornerRadius,
 							16f.dp
 						)
 					)
+					if (hasValue(R.styleable.FloatingActionButtonMenu_shrunkRippleColor)) {
+						setShrunkRippleColor(
+							getColor(
+								R.styleable.FloatingActionButtonMenu_shrunkRippleColor,
+								getTriggerRippleColor()
+							)
+						)
+					}
+					if (hasValue(R.styleable.FloatingActionButtonMenu_shrunkCornerRadius)) {
+						setShrunkCornerRadius(
+							getDimension(
+								R.styleable.FloatingActionButtonMenu_shrunkCornerRadius,
+								0f
+							)
+						)
+					}
+					if (hasValue(R.styleable.FloatingActionButtonMenu_extendRippleColor)) {
+						setExtendRippleColor(
+							getColor(
+								R.styleable.FloatingActionButtonMenu_extendRippleColor,
+								getTriggerRippleColor()
+							)
+						)
+					}
+					if (hasValue(R.styleable.FloatingActionButtonMenu_extendCornerRadius)) {
+						setExtendCornerRadius(
+							getDimension(
+								R.styleable.FloatingActionButtonMenu_extendCornerRadius,
+								0f
+							)
+						)
+					}
 					setIconSide(
 						IconSide.entries.toTypedArray()[getInt(
 							R.styleable.FloatingActionButtonMenu_iconSide,
@@ -753,17 +891,19 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 			resolvedTriggerCornerRadius,
 			Path.Direction.CW
 		)
-		triggerFillPaint.color = triggerBackgroundTintValue.getColorForState(
+		val activeBackgroundTint = resolvedTriggerBackgroundTint
+		triggerFillPaint.color = activeBackgroundTint.getColorForState(
 			drawableState,
-			triggerBackgroundTintValue.defaultColor
+			activeBackgroundTint.defaultColor
 		)
 		canvas.drawPath(triggerPillPath, triggerFillPaint)
 
 		if (rippleAlphaProgress > 0f) {
 			canvas.save()
 			canvas.clipPath(triggerPillPath)
-			val baseAlpha = Color.alpha(triggerRippleColorValue)
-			triggerRipplePaint.color = triggerRippleColorValue
+			val activeRippleColor = resolvedTriggerRippleColor
+			val baseAlpha = Color.alpha(activeRippleColor)
+			triggerRipplePaint.color = activeRippleColor
 			triggerRipplePaint.alpha = (baseAlpha * rippleAlphaProgress).toInt()
 			canvas.drawCircle(rippleX, rippleY, rippleRadius, triggerRipplePaint)
 			canvas.restore()
@@ -802,6 +942,7 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 		}
 
 		if (hasText && text != null) {
+			textPaint.color = resolvedTextColor
 			textPaint.alpha = (triggerWidthFraction * 255).toInt()
 			textPaint.typeface = Typeface.DEFAULT_BOLD
 			val baseline = triggerRect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2f

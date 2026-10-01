@@ -53,9 +53,7 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 		modulesList = ArraySet(
 			gson.fromJson<ArrayList<String>>(
 				FileUtil.readFile(
-					FileUtil.externalStorageDir +
-							FileUtil.separator +
-							"Sketchproject Pro" +
+					FileUtil.PublicDirectoryOfProject +
 							FileUtil.separator +
 							"prefix.json"
 				),
@@ -67,7 +65,7 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 		input_binding = ActivityProjectModulesCreatorDialogInputBinding.inflate(layoutInflater)
 
 		enableEdgeToEdge()
-		setContentView(layout_binding.root)
+		setContentView(layout_binding)
 		applyWindowInsets()
 
 		layout_binding.bar.setNavigationOnClickListener { onBackPressed() }
@@ -147,7 +145,7 @@ class ProjectModulesCreatorActivity : ComponentAppCompatActivity() {
 	override fun onBackPressed() {
 		super.onBackPressed()
 		FileUtil.writeFile(
-			FileUtil.externalStorageDir + FileUtil.separator + "Sketchproject Pro" + FileUtil.separator + "prefix.json",
+			FileUtil.PublicDirectoryOfProject + FileUtil.separator + "prefix.json",
 			gson.toJson(modulesList)
 		)
 	}

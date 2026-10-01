@@ -7,8 +7,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.deavidig.mod.deanielig.appcompat.app.ComponentAppCompatActivity
 import com.deavidig.mod.deanielig.backdrop.widget.ComponentBackdropAdapter
-import com.deavidig.skecth.project.creator.fragments.ContentFragment
-import com.deavidig.skecth.project.creator.fragments.ModulesFragment
+import com.deavidig.skecth.project.creator.fragments.`ProjectCreator-ContentFragment`
+import com.deavidig.skecth.project.creator.fragments.`ProjectCreator-ModulesFragment`
 import com.deavidig.sketchprojectpro.R
 import com.deavidig.sketchprojectpro.databinding.ActivityProjectCreatorBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -21,7 +21,7 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 
 		enableEdgeToEdge()
 		layout_binding = ActivityProjectCreatorBinding.inflate(layoutInflater)
-		setContentView(layout_binding.root)
+		setContentView(layout_binding)
 		applyWindowInsets()
 
 		layout_binding.bar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
@@ -65,8 +65,8 @@ class ProjectCreatorActivity : ComponentAppCompatActivity() {
 
 	class ComponentBackDropFragment(activity: AppCompatActivity) :
 		ComponentBackdropAdapter.Companion.ComponentBaseBackdropAdapter(activity) {
-		override fun createBackFragment(): Fragment = ModulesFragment()
+		override fun createBackFragment(): Fragment = `ProjectCreator-ModulesFragment`()
 
-		override fun createFrontFragment(): Fragment = ContentFragment()
+		override fun createFrontFragment(): Fragment = `ProjectCreator-ContentFragment`()
 	}
 }

@@ -15,6 +15,7 @@ import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import androidx.annotation.ColorInt
 import androidx.annotation.Px
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -100,6 +101,8 @@ import java.lang.ref.WeakReference
  * when [show] is called.
  */
 class ComponentBadge(private val context: Context) {
+
+	constructor(fragment: Fragment) : this(fragment.requireContext())
 
 	companion object {
 		/** Default pill background: Material red, chosen to read as an "alert"/"new" marker. */

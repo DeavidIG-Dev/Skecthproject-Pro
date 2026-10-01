@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent">
+
+	<com.google.android.material.imageview.ShapeableImageView
+		android:id="@+id/application_icon"
+		android:layout_width="85dp"
+		android:layout_height="85dp"
+		android:layout_marginTop="28dp"
+		android:src="@mipmap/ic_launcher"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		app:shapeAppearance="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded" />
+
+	<com.google.android.material.imageview.ShapeableImageView
+		android:id="@+id/project_icon"
+		android:layout_width="85dp"
+		android:layout_height="85dp"
+		android:layout_marginTop="28dp"
+		android:src="@mipmap/ic_launcher"
+		android:visibility="gone"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toTopOf="parent"
+		app:shapeAppearance="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded" />
+
+	<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+		android:id="@+id/application_name"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="5dp"
+		android:layout_marginTop="8dp"
+		app:hintCutoutBackgroundColor="?attr/colorSurface"
+		app:hintEnable="true"
+		app:hintFormat="in"
+		app:hintStartAnchor="startIcon"
+		app:hintText="Enter Aplicacion Name"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@+id/application_icon"
+		app:placeholderEnable="true"
+		app:placeholderText="SketchApp"
+		app:startIconDrawable="@drawable/ic_android_24"
+		app:startIconEnable="true">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:singleLine="true"
+			android:text="SketchApp" />
+
+	</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+	<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+		android:id="@+id/application_package"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="5dp"
+		android:layout_marginTop="8dp"
+		app:endLayoutEnable="true"
+		app:endLayoutStyle="theedot"
+		app:hintCutoutBackgroundColor="?attr/colorSurface"
+		app:hintEnable="true"
+		app:hintFormat="in"
+		app:hintStartAnchor="startIcon"
+		app:hintText="Enter Package Name"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/application_name"
+		app:placeholderEnable="true"
+		app:placeholderText="sketch_app"
+		app:startIconDrawable="@drawable/ic_deployed_code_24"
+		app:startIconEnable="true">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:singleLine="true"
+			android:text="sketch_app" />
+
+	</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+	<com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout
+		android:id="@+id/description_project"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_marginHorizontal="5dp"
+		android:layout_marginTop="8dp"
+		android:visibility="gone"
+		app:hintCutoutBackgroundColor="?attr/colorSurface"
+		app:hintEnable="true"
+		app:hintFormat="in"
+		app:hintStartAnchor="startIcon"
+		app:hintText="Description"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/application_package"
+		app:placeholderEnable="true"
+		app:placeholderText="My project is..."
+		app:startIconDrawable="@drawable/ic_log_24"
+		app:startIconEnable="true">
+
+		<com.google.android.material.textfield.TextInputEditText
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:maxLines="5" />
+
+	</com.deavidig.mod.deanielig.textinput.widget.ComponentTextInputLayout>
+
+	<com.google.android.material.textview.MaterialTextView
+		android:id="@+id/not_valid"
+		style="@style/TextAppearance.Material3.TitleLarge"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="16dp"
+		android:text="Select Language"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/description_project" />
+
+	<com.google.android.material.button.MaterialButtonToggleGroup
+		android:layout_width="350dp"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="10dp"
+		android:background="@drawable/tab_background"
+		android:paddingHorizontal="5dp"
+		app:checkedButton="@id/language_option_java"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:layout_constraintTop_toBottomOf="@id/not_valid"
+		app:selectionRequired="true"
+		app:singleLine="true"
+		app:singleSelection="false">
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/language_option_java"
+			style="@style/Widget.ComponentMaterial.ComponentMaterialButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:padding="8dp"
+			android:text="Java"
+			app:icon="@drawable/ic_java_32" />
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/language_option_kotlin"
+			style="@style/Widget.ComponentMaterial.ComponentMaterialButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:padding="8dp"
+			android:text="Kotlin"
+			app:icon="@drawable/ic_kotlin_32" />
+
+		<com.google.android.material.button.MaterialButton
+			android:id="@+id/language_option_scala"
+			style="@style/Widget.ComponentMaterial.ComponentMaterialButton"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"
+			android:padding="8dp"
+			android:text="Scala"
+			app:icon="@drawable/ic_scala_32" />
+
+	</com.google.android.material.button.MaterialButtonToggleGroup>
+
+	<com.deavidig.mod.deanielig.floatingbar.widget.ComponentFloatingBar
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_margin="16dp"
+		android:elevation="16dp"
+		app:layout_constraintBottom_toBottomOf="parent"
+		app:layout_constraintEnd_toEndOf="parent"
+		app:layout_constraintStart_toStartOf="parent"
+		app:leftMenu="@menu/activity_project_creator_content_floatingbar_left_menu" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

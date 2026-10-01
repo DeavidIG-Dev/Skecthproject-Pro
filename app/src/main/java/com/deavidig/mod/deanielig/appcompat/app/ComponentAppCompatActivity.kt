@@ -9,11 +9,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.get
+import androidx.viewbinding.ViewBinding
 
 
 open class ComponentAppCompatActivity() : AppCompatActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+	}
+
+	fun setContentView(binding: ViewBinding) {
+		setContentView(binding.root)
 	}
 
 	fun applyWindowInsets() {

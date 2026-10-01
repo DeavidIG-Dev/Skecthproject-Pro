@@ -38,13 +38,13 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.get
 import androidx.core.widget.ImageViewCompat
 import androidx.core.widget.TextViewCompat
 import com.deavidig.sketchprojectpro.R
 import com.google.android.material.appbar.AppBarLayout
 import kotlin.math.max
 import kotlin.math.min
-import androidx.core.view.get
 
 /**
  * A custom top app bar built from scratch on top of [ViewGroup] -it does not
@@ -281,7 +281,8 @@ class ComponentToolbar @JvmOverloads constructor(
 
 	private val iconTouchTargetSize: Int = dpToPx(48)
 	private val iconDrawablePadding: Int = dpToPx(12)
-	private val rippleInset: Int = dpToPx(6) // see createCompactRipple(): shrinks the ripple inside the 48dp touch target
+	private val rippleInset: Int =
+		dpToPx(6) // see createCompactRipple(): shrinks the ripple inside the 48dp touch target
 	private val menuItemSpacing: Int = dpToPx(4)
 	private val titleBlockHorizontalMargin: Int = dpToPx(12)
 	private val minTitleReserve: Int = dpToPx(48)
@@ -340,17 +341,37 @@ class ComponentToolbar @JvmOverloads constructor(
 	private fun setupNavigationIconView() {
 		navigationIconView.scaleType = ImageView.ScaleType.CENTER_INSIDE
 		navigationIconView.background = createCompactRipple()
-		navigationIconView.setPadding(iconDrawablePadding, iconDrawablePadding, iconDrawablePadding, iconDrawablePadding)
-		navigationIconView.setOnClickListener { view -> onNavigationClickListener?.onNavigationClick(view) }
-		navigationIconView.setOnLongClickListener { view -> onNavigationLongClickListener?.onNavigationLongClick(view) ?: false }
+		navigationIconView.setPadding(
+			iconDrawablePadding,
+			iconDrawablePadding,
+			iconDrawablePadding,
+			iconDrawablePadding
+		)
+		navigationIconView.setOnClickListener { view ->
+			onNavigationClickListener?.onNavigationClick(
+				view
+			)
+		}
+		navigationIconView.setOnLongClickListener { view ->
+			onNavigationLongClickListener?.onNavigationLongClick(
+				view
+			) ?: false
+		}
 	}
 
 	private fun setupLogoView() {
 		logoView.scaleType = ImageView.ScaleType.CENTER_INSIDE
 		logoView.background = createCompactRipple()
-		logoView.setPadding(iconDrawablePadding, iconDrawablePadding, iconDrawablePadding, iconDrawablePadding)
+		logoView.setPadding(
+			iconDrawablePadding,
+			iconDrawablePadding,
+			iconDrawablePadding,
+			iconDrawablePadding
+		)
 		logoView.setOnClickListener { view -> onLogoClickListener?.onLogoClick(view) }
-		logoView.setOnLongClickListener { view -> onLogoLongClickListener?.onLogoLongClick(view) ?: false }
+		logoView.setOnLongClickListener { view ->
+			onLogoLongClickListener?.onLogoLongClick(view) ?: false
+		}
 	}
 
 	private fun setupTitleView() {
@@ -373,7 +394,12 @@ class ComponentToolbar @JvmOverloads constructor(
 	private fun setupOverflowButton(button: AppCompatImageButton) {
 		button.scaleType = ImageView.ScaleType.CENTER_INSIDE
 		button.background = createCompactRipple()
-		button.setPadding(iconDrawablePadding, iconDrawablePadding, iconDrawablePadding, iconDrawablePadding)
+		button.setPadding(
+			iconDrawablePadding,
+			iconDrawablePadding,
+			iconDrawablePadding,
+			iconDrawablePadding
+		)
 		button.setImageDrawable(ThreeDotsDrawable(resolveDefaultIconTintColor()))
 		button.contentDescription = "More options"
 		button.layoutParams = LinearLayout.LayoutParams(iconTouchTargetSize, iconTouchTargetSize)
@@ -390,7 +416,8 @@ class ComponentToolbar @JvmOverloads constructor(
 	}
 
 	/** @see setNavigationIcon */
-	fun setNavigationIcon(@DrawableRes iconRes: Int) = setNavigationIcon(ContextCompat.getDrawable(context, iconRes))
+	fun setNavigationIcon(@DrawableRes iconRes: Int) =
+		setNavigationIcon(ContextCompat.getDrawable(context, iconRes))
 
 	/** Returns the current navigation icon drawable, or `null` if none is set. */
 	fun getNavigationIcon(): Drawable? = navigationIconView.drawable
@@ -408,11 +435,15 @@ class ComponentToolbar @JvmOverloads constructor(
 	/** Sets the accessibility content description and tooltip text for the navigation icon. */
 	fun setNavigationContentDescription(description: CharSequence?) {
 		navigationIconView.contentDescription = description
-		if (!description.isNullOrEmpty()) TooltipCompat.setTooltipText(navigationIconView, description)
+		if (!description.isNullOrEmpty()) TooltipCompat.setTooltipText(
+			navigationIconView,
+			description
+		)
 	}
 
 	/** @see setNavigationContentDescription */
-	fun setNavigationContentDescription(@StringRes resId: Int) = setNavigationContentDescription(context.getString(resId))
+	fun setNavigationContentDescription(@StringRes resId: Int) =
+		setNavigationContentDescription(context.getString(resId))
 
 	/** The view only becomes clickable once both a listener and an icon are set. */
 	fun setNavigationOnClickListener(listener: OnNavigationClickListener?) {
@@ -490,18 +521,26 @@ class ComponentToolbar @JvmOverloads constructor(
 
 	/** @see setTitle */
 	fun setTitle(@StringRes resId: Int) = setTitle(context.getString(resId))
+
 	/** Returns the current title text, or `null` if none is set. */
 	fun getTitle(): CharSequence? = titleView.text
+
 	/** Sets the title's text color. */
 	fun setTitleTextColor(@ColorInt color: Int) = titleView.setTextColor(color)
+
 	/** Sets the title's text color from a [ColorStateList]. */
 	fun setTitleTextColor(colors: ColorStateList) = titleView.setTextColor(colors)
+
 	/** Sets the title's text size, in SP. */
 	fun setTitleTextSize(sizeSp: Float) = titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+
 	/** Sets the title's typeface and style. */
-	fun setTitleTypeface(typeface: Typeface?, style: Int = Typeface.NORMAL) = titleView.setTypeface(typeface, style)
+	fun setTitleTypeface(typeface: Typeface?, style: Int = Typeface.NORMAL) =
+		titleView.setTypeface(typeface, style)
+
 	/** Applies a text appearance style resource to the title (covers color, size and font in one call). */
-	fun setTitleTextAppearance(@StyleRes resId: Int) = TextViewCompat.setTextAppearance(titleView, resId)
+	fun setTitleTextAppearance(@StyleRes resId: Int) =
+		TextViewCompat.setTextAppearance(titleView, resId)
 
 	/** Sets the subtitle text, or `null`/empty to hide it. */
 	fun setSubtitle(subtitle: CharSequence?) {
@@ -512,41 +551,68 @@ class ComponentToolbar @JvmOverloads constructor(
 
 	/** @see setSubtitle */
 	fun setSubtitle(@StringRes resId: Int) = setSubtitle(context.getString(resId))
+
 	/** Returns the current subtitle text, or `null` if none is set. */
 	fun getSubtitle(): CharSequence? = subtitleView.text
+
 	/** Sets the subtitle's text color. */
 	fun setSubtitleTextColor(@ColorInt color: Int) = subtitleView.setTextColor(color)
+
 	/** Sets the subtitle's text color from a [ColorStateList]. */
 	fun setSubtitleTextColor(colors: ColorStateList) = subtitleView.setTextColor(colors)
+
 	/** Sets the subtitle's text size, in SP. */
-	fun setSubtitleTextSize(sizeSp: Float) = subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+	fun setSubtitleTextSize(sizeSp: Float) =
+		subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
+
 	/** Sets the subtitle's typeface and style. */
-	fun setSubtitleTypeface(typeface: Typeface?, style: Int = Typeface.NORMAL) = subtitleView.setTypeface(typeface, style)
+	fun setSubtitleTypeface(typeface: Typeface?, style: Int = Typeface.NORMAL) =
+		subtitleView.setTypeface(typeface, style)
+
 	/** Applies a text appearance style resource to the subtitle. */
-	fun setSubtitleTextAppearance(@StyleRes resId: Int) = TextViewCompat.setTextAppearance(subtitleView, resId)
+	fun setSubtitleTextAppearance(@StyleRes resId: Int) =
+		TextViewCompat.setTextAppearance(subtitleView, resId)
 
 	/** Sets all four title margins at once, in pixels. */
 	fun setTitleMargins(start: Int, top: Int, end: Int, bottom: Int) {
-		titleMarginStart = start; titleMarginTop = top; titleMarginEnd = end; titleMarginBottom = bottom
+		titleMarginStart = start; titleMarginTop = top; titleMarginEnd = end; titleMarginBottom =
+			bottom
 		requestLayout()
 	}
 
 	/** Sets the start margin of the title/subtitle block, in pixels. */
-	fun setTitleMarginStart(@Px margin: Int) { titleMarginStart = margin; requestLayout() }
+	fun setTitleMarginStart(@Px margin: Int) {
+		titleMarginStart = margin; requestLayout()
+	}
+
 	/** Sets the top margin of the title/subtitle block, in pixels. */
-	fun setTitleMarginTop(@Px margin: Int) { titleMarginTop = margin; requestLayout() }
+	fun setTitleMarginTop(@Px margin: Int) {
+		titleMarginTop = margin; requestLayout()
+	}
+
 	/** Sets the end margin of the title/subtitle block, in pixels. */
-	fun setTitleMarginEnd(@Px margin: Int) { titleMarginEnd = margin; requestLayout() }
+	fun setTitleMarginEnd(@Px margin: Int) {
+		titleMarginEnd = margin; requestLayout()
+	}
+
 	/** Sets the bottom margin of the title/subtitle block, in pixels. */
-	fun setTitleMarginBottom(@Px margin: Int) { titleMarginBottom = margin; requestLayout() }
+	fun setTitleMarginBottom(@Px margin: Int) {
+		titleMarginBottom = margin; requestLayout()
+	}
 
 	/** Title alignment: START (default), CENTER or END. Independent from the subtitle's. */
-	fun setTitleAlignment(alignment: HorizontalAlignment) { titleAlignment = alignment; requestLayout() }
+	fun setTitleAlignment(alignment: HorizontalAlignment) {
+		titleAlignment = alignment; requestLayout()
+	}
+
 	/** Returns the current title alignment. */
 	fun getTitleAlignment(): HorizontalAlignment = titleAlignment
 
 	/** Subtitle alignment: START (default), CENTER or END. Independent from the title's. */
-	fun setSubtitleAlignment(alignment: HorizontalAlignment) { subtitleAlignment = alignment; requestLayout() }
+	fun setSubtitleAlignment(alignment: HorizontalAlignment) {
+		subtitleAlignment = alignment; requestLayout()
+	}
+
 	/** Returns the current subtitle alignment. */
 	fun getSubtitleAlignment(): HorizontalAlignment = subtitleAlignment
 
@@ -559,9 +625,15 @@ class ComponentToolbar @JvmOverloads constructor(
 
 
 	/** Sets the leading inset applied after the navigation icon, in pixels. */
-	fun setContentInsetStartWithNavigation(@Px inset: Int) { contentInsetStart = inset; requestLayout() }
+	fun setContentInsetStartWithNavigation(@Px inset: Int) {
+		contentInsetStart = inset; requestLayout()
+	}
+
 	/** Sets the trailing inset applied before the right-side content, in pixels. */
-	fun setContentInsetEnd(@Px inset: Int) { contentInsetEnd = inset; requestLayout() }
+	fun setContentInsetEnd(@Px inset: Int) {
+		contentInsetEnd = inset; requestLayout()
+	}
+
 	fun getContentInsetStart(): Int = contentInsetStart
 	fun getContentInsetEnd(): Int = contentInsetEnd
 
@@ -582,10 +654,12 @@ class ComponentToolbar @JvmOverloads constructor(
 	}
 
 	/** Returns a reactive [Menu] -see the "MenuItem reactivity" region- or `null` if nothing was inflated yet. */
-	fun getLeftMenu(): Menu? = leftMenuHolder?.menu?.let { ReactiveMenu(it) { item -> wrapReactive(item, isLeft = true) } }
+	fun getLeftMenu(): Menu? =
+		leftMenuHolder?.menu?.let { ReactiveMenu(it) { item -> wrapReactive(item, isLeft = true) } }
 
 	/** Returns the currently selected item (reactive), or `null` if nothing is selected. */
-	fun getSelectedLeftMenuItem(): MenuItem? = leftMenuHolder?.menu?.findItem(selectedLeftItemId)?.let { wrapReactive(it, isLeft = true) }
+	fun getSelectedLeftMenuItem(): MenuItem? =
+		leftMenuHolder?.menu?.findItem(selectedLeftItemId)?.let { wrapReactive(it, isLeft = true) }
 
 	/** Removes all items from this side's menu and resets its selection state. */
 	fun clearLeftMenu() {
@@ -604,15 +678,30 @@ class ComponentToolbar @JvmOverloads constructor(
 		requestLayout()
 	}
 
-	fun setOnLeftItemMenuClickListener(listener: OnItemMenuClickListener?) { onLeftItemMenuClickListener = listener }
-	fun setOnLeftItemMenuLongClickListener(listener: OnItemMenuLongClickListener?) { onLeftItemMenuLongClickListener = listener }
-	fun setOnLeftItemMenuChangedListener(listener: OnItemMenuChangedListener?) { onLeftItemMenuChangedListener = listener }
-	fun setOnLeftItemMenuLongChangedListener(listener: OnItemMenuLongChangedListener?) { onLeftItemMenuLongChangedListener = listener }
+	fun setOnLeftItemMenuClickListener(listener: OnItemMenuClickListener?) {
+		onLeftItemMenuClickListener = listener
+	}
+
+	fun setOnLeftItemMenuLongClickListener(listener: OnItemMenuLongClickListener?) {
+		onLeftItemMenuLongClickListener = listener
+	}
+
+	fun setOnLeftItemMenuChangedListener(listener: OnItemMenuChangedListener?) {
+		onLeftItemMenuChangedListener = listener
+	}
+
+	fun setOnLeftItemMenuLongChangedListener(listener: OnItemMenuLongChangedListener?) {
+		onLeftItemMenuLongChangedListener = listener
+	}
 
 	/** Replaces the "⋮" overflow icon for this side. */
-	fun setLeftOverflowIcon(icon: Drawable?) { leftOverflowButton.setImageDrawable(icon) }
+	fun setLeftOverflowIcon(icon: Drawable?) {
+		leftOverflowButton.setImageDrawable(icon)
+	}
+
 	/** @see setLeftOverflowIcon */
-	fun setLeftOverflowIcon(@DrawableRes iconRes: Int) = setLeftOverflowIcon(ContextCompat.getDrawable(context, iconRes))
+	fun setLeftOverflowIcon(@DrawableRes iconRes: Int) =
+		setLeftOverflowIcon(ContextCompat.getDrawable(context, iconRes))
 
 	/**
 	 * Forces the item with [itemId] to ALWAYS live in this side's overflow,
@@ -620,8 +709,16 @@ class ComponentToolbar @JvmOverloads constructor(
 	 * secondary actions you want to hide from the main row on purpose.
 	 */
 	fun setLeftItemAlwaysInOverflow(itemId: Int, alwaysInOverflow: Boolean) {
-		if (alwaysInOverflow) leftForcedOverflowIds.add(itemId) else leftForcedOverflowIds.remove(itemId)
-		populateMenuSide(leftMenuView, leftOverflowButton, leftEntries, leftMenuHolder?.menu, isLeft = true)
+		if (alwaysInOverflow) leftForcedOverflowIds.add(itemId) else leftForcedOverflowIds.remove(
+			itemId
+		)
+		populateMenuSide(
+			leftMenuView,
+			leftOverflowButton,
+			leftEntries,
+			leftMenuHolder?.menu,
+			isLeft = true
+		)
 		requestLayout()
 	}
 
@@ -632,14 +729,29 @@ class ComponentToolbar @JvmOverloads constructor(
 		popup.menuInflater.inflate(menuRes, popup.menu)
 		rightMenuHolder = popup
 		rightEntries = buildEntries(popup.menu, isLeft = false)
-		populateMenuSide(rightMenuView, rightOverflowButton, rightEntries, popup.menu, isLeft = false)
+		populateMenuSide(
+			rightMenuView,
+			rightOverflowButton,
+			rightEntries,
+			popup.menu,
+			isLeft = false
+		)
 		requestLayout()
 	}
 
 	/** @see getLeftMenu */
-	fun getRightMenu(): Menu? = rightMenuHolder?.menu?.let { ReactiveMenu(it) { item -> wrapReactive(item, isLeft = false) } }
+	fun getRightMenu(): Menu? = rightMenuHolder?.menu?.let {
+		ReactiveMenu(it) { item ->
+			wrapReactive(
+				item,
+				isLeft = false
+			)
+		}
+	}
+
 	/** @see getSelectedLeftMenuItem */
-	fun getSelectedRightMenuItem(): MenuItem? = rightMenuHolder?.menu?.findItem(selectedRightItemId)?.let { wrapReactive(it, isLeft = false) }
+	fun getSelectedRightMenuItem(): MenuItem? = rightMenuHolder?.menu?.findItem(selectedRightItemId)
+		?.let { wrapReactive(it, isLeft = false) }
 
 	/** Removes all items from this side's menu and resets its selection state. */
 	fun clearRightMenu() {
@@ -658,20 +770,43 @@ class ComponentToolbar @JvmOverloads constructor(
 		requestLayout()
 	}
 
-	fun setOnRightItemMenuClickListener(listener: OnItemMenuClickListener?) { onRightItemMenuClickListener = listener }
-	fun setOnRightItemMenuLongClickListener(listener: OnItemMenuLongClickListener?) { onRightItemMenuLongClickListener = listener }
-	fun setOnRightItemMenuChangedListener(listener: OnItemMenuChangedListener?) { onRightItemMenuChangedListener = listener }
-	fun setOnRightItemMenuLongChangedListener(listener: OnItemMenuLongChangedListener?) { onRightItemMenuLongChangedListener = listener }
+	fun setOnRightItemMenuClickListener(listener: OnItemMenuClickListener?) {
+		onRightItemMenuClickListener = listener
+	}
+
+	fun setOnRightItemMenuLongClickListener(listener: OnItemMenuLongClickListener?) {
+		onRightItemMenuLongClickListener = listener
+	}
+
+	fun setOnRightItemMenuChangedListener(listener: OnItemMenuChangedListener?) {
+		onRightItemMenuChangedListener = listener
+	}
+
+	fun setOnRightItemMenuLongChangedListener(listener: OnItemMenuLongChangedListener?) {
+		onRightItemMenuLongChangedListener = listener
+	}
 
 	/** @see setLeftOverflowIcon */
-	fun setRightOverflowIcon(icon: Drawable?) { rightOverflowButton.setImageDrawable(icon) }
+	fun setRightOverflowIcon(icon: Drawable?) {
+		rightOverflowButton.setImageDrawable(icon)
+	}
+
 	/** @see setLeftOverflowIcon */
-	fun setRightOverflowIcon(@DrawableRes iconRes: Int) = setRightOverflowIcon(ContextCompat.getDrawable(context, iconRes))
+	fun setRightOverflowIcon(@DrawableRes iconRes: Int) =
+		setRightOverflowIcon(ContextCompat.getDrawable(context, iconRes))
 
 	/** Same as [setLeftItemAlwaysInOverflow], for the right side. */
 	fun setRightItemAlwaysInOverflow(itemId: Int, alwaysInOverflow: Boolean) {
-		if (alwaysInOverflow) rightForcedOverflowIds.add(itemId) else rightForcedOverflowIds.remove(itemId)
-		populateMenuSide(rightMenuView, rightOverflowButton, rightEntries, rightMenuHolder?.menu, isLeft = false)
+		if (alwaysInOverflow) rightForcedOverflowIds.add(itemId) else rightForcedOverflowIds.remove(
+			itemId
+		)
+		populateMenuSide(
+			rightMenuView,
+			rightOverflowButton,
+			rightEntries,
+			rightMenuHolder?.menu,
+			isLeft = false
+		)
 		requestLayout()
 	}
 
@@ -704,15 +839,41 @@ class ComponentToolbar @JvmOverloads constructor(
 		private val delegate: MenuItem,
 		private val onChanged: () -> Unit
 	) : MenuItem by delegate {
-		override fun setIcon(icon: Drawable?): MenuItem { delegate.icon = icon; onChanged(); return this }
-		override fun setIcon(iconRes: Int): MenuItem { delegate.setIcon(iconRes); onChanged(); return this }
-		override fun setTitle(title: CharSequence?): MenuItem { delegate.title = title; onChanged(); return this }
-		override fun setTitle(titleRes: Int): MenuItem { delegate.setTitle(titleRes); onChanged(); return this }
-		override fun setTitleCondensed(title: CharSequence?): MenuItem { delegate.titleCondensed = title; onChanged(); return this }
-		override fun setShowAsAction(actionEnum: Int) { delegate.setShowAsAction(actionEnum); onChanged() }
-		override fun setShowAsActionFlags(actionEnum: Int): MenuItem { delegate.setShowAsActionFlags(actionEnum); onChanged(); return this }
-		override fun setVisible(visible: Boolean): MenuItem { delegate.isVisible = visible; onChanged(); return this }
-		override fun setEnabled(enabled: Boolean): MenuItem { delegate.isEnabled = enabled; onChanged(); return this }
+		override fun setIcon(icon: Drawable?): MenuItem {
+			delegate.icon = icon; onChanged(); return this
+		}
+
+		override fun setIcon(iconRes: Int): MenuItem {
+			delegate.setIcon(iconRes); onChanged(); return this
+		}
+
+		override fun setTitle(title: CharSequence?): MenuItem {
+			delegate.title = title; onChanged(); return this
+		}
+
+		override fun setTitle(titleRes: Int): MenuItem {
+			delegate.setTitle(titleRes); onChanged(); return this
+		}
+
+		override fun setTitleCondensed(title: CharSequence?): MenuItem {
+			delegate.titleCondensed = title; onChanged(); return this
+		}
+
+		override fun setShowAsAction(actionEnum: Int) {
+			delegate.setShowAsAction(actionEnum); onChanged()
+		}
+
+		override fun setShowAsActionFlags(actionEnum: Int): MenuItem {
+			delegate.setShowAsActionFlags(actionEnum); onChanged(); return this
+		}
+
+		override fun setVisible(visible: Boolean): MenuItem {
+			delegate.isVisible = visible; onChanged(); return this
+		}
+
+		override fun setEnabled(enabled: Boolean): MenuItem {
+			delegate.isEnabled = enabled; onChanged(); return this
+		}
 
 		/** The real, unwrapped item -needed by [isShowAsActionAlways] to cast to MenuItemImpl. */
 		fun unwrap(): MenuItem = delegate
@@ -729,6 +890,7 @@ class ComponentToolbar @JvmOverloads constructor(
 		override fun add(titleRes: Int): MenuItem = onChanged(delegate.add(titleRes))
 		override fun add(groupId: Int, itemId: Int, order: Int, title: CharSequence?): MenuItem =
 			onChanged(delegate.add(groupId, itemId, order, title))
+
 		override fun add(groupId: Int, itemId: Int, order: Int, titleRes: Int): MenuItem =
 			onChanged(delegate.add(groupId, itemId, order, titleRes))
 
@@ -819,12 +981,38 @@ class ComponentToolbar @JvmOverloads constructor(
 				.setEnabled(subItem.isEnabled)
 		}
 		popup.setOnMenuItemClickListener { proxyItem ->
-			val realSubItem = subMenu.findItem(proxyItem.itemId) ?: return@setOnMenuItemClickListener false
-			val clickListener = if (isLeft) onLeftItemMenuClickListener else onRightItemMenuClickListener
+			val realSubItem =
+				subMenu.findItem(proxyItem.itemId) ?: return@setOnMenuItemClickListener false
+			val clickListener =
+				if (isLeft) onLeftItemMenuClickListener else onRightItemMenuClickListener
 			clickListener?.onMenuItemClicked(wrapReactive(realSubItem, isLeft))
 			true
 		}
+		showPopupMenuClearingRipple(anchor, popup)
+	}
+
+	/**
+	 * Shows [popup] anchored to [anchor], working around a long-standing
+	 * Android issue: opening a `PopupWindow`/[PopupMenu] from inside a
+	 * click listener steals window focus from the anchor's own window
+	 * before the anchor's ripple finishes its normal "un-press" handling,
+	 * so the ripple is left visually frozen in its pressed state -it does
+	 * not resume until some other, unrelated view is touched, since only a
+	 * fresh touch sequence forces a global `ACTION_CANCEL` that clears it.
+	 * Explicitly clearing [View.isPressed] and jumping the background
+	 * straight to its resting state -both right after showing the popup
+	 * and again the moment it's dismissed, whichever happens first- fixes
+	 * it in every dismissal path (item picked, tapped outside, back
+	 * button).
+	 */
+	private fun showPopupMenuClearingRipple(anchor: View, popup: PopupMenu) {
+		fun clearRipple() {
+			anchor.isPressed = false
+			anchor.background?.jumpToCurrentState()
+		}
+		popup.setOnDismissListener { clearRipple() }
 		popup.show()
+		clearRipple()
 	}
 
 	/** Uses the item's icon when present; otherwise falls back to a text button with its title. */
@@ -833,14 +1021,24 @@ class ComponentToolbar @JvmOverloads constructor(
 			AppCompatImageButton(context).apply {
 				scaleType = ImageView.ScaleType.CENTER_INSIDE
 				background = createCompactRipple()
-				setPadding(iconDrawablePadding, iconDrawablePadding, iconDrawablePadding, iconDrawablePadding)
+				setPadding(
+					iconDrawablePadding,
+					iconDrawablePadding,
+					iconDrawablePadding,
+					iconDrawablePadding
+				)
 				setImageDrawable(item.icon)
 				contentDescription = item.title
 				isEnabled = item.isEnabled
 				alpha = if (item.isEnabled) ENABLED_ALPHA else DISABLED_ALPHA
 				if (!item.title.isNullOrEmpty()) TooltipCompat.setTooltipText(this, item.title)
 				layoutParams = LinearLayout.LayoutParams(iconTouchTargetSize, iconTouchTargetSize)
-				menuIconTint?.let { ImageViewCompat.setImageTintList(this, ColorStateList.valueOf(it)) }
+				menuIconTint?.let {
+					ImageViewCompat.setImageTintList(
+						this,
+						ColorStateList.valueOf(it)
+					)
+				}
 			}
 		} else {
 			AppCompatButton(context, null, android.R.attr.borderlessButtonStyle).apply {
@@ -853,7 +1051,10 @@ class ComponentToolbar @JvmOverloads constructor(
 				isEnabled = item.isEnabled
 				alpha = if (item.isEnabled) ENABLED_ALPHA else DISABLED_ALPHA
 				menuIconTint?.let { setTextColor(it) }
-				layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, iconTouchTargetSize)
+				layoutParams = LinearLayout.LayoutParams(
+					LinearLayout.LayoutParams.WRAP_CONTENT,
+					iconTouchTargetSize
+				)
 			}
 		}
 	}
@@ -881,6 +1082,7 @@ class ComponentToolbar @JvmOverloads constructor(
 		masterMenu: Menu?,
 		isLeft: Boolean
 	) {
+		clearOutgoingRipples(container)
 		container.removeAllViews()
 
 		if (entries.isEmpty()) {
@@ -889,16 +1091,20 @@ class ComponentToolbar @JvmOverloads constructor(
 		}
 
 		val forcedIds = if (isLeft) leftForcedOverflowIds else rightForcedOverflowIds
-		val visibleEntries = entries.filter { isShowAsActionAlways(it.item) && it.item.itemId !in forcedIds }
-		val overflowEntries = entries.filterNot { entry -> visibleEntries.any { it.item.itemId == entry.item.itemId } }
+		val visibleEntries =
+			entries.filter { isShowAsActionAlways(it.item) && it.item.itemId !in forcedIds }
+		val overflowEntries =
+			entries.filterNot { entry -> visibleEntries.any { it.item.itemId == entry.item.itemId } }
 
 		visibleEntries.forEachIndexed { index, entry ->
-			(entry.view.layoutParams as LinearLayout.LayoutParams).marginStart = if (index == 0) 0 else menuItemSpacing
+			(entry.view.layoutParams as LinearLayout.LayoutParams).marginStart =
+				if (index == 0) 0 else menuItemSpacing
 			container.addView(entry.view)
 		}
 
 		if (overflowEntries.isNotEmpty()) {
-			(overflowButton.layoutParams as LinearLayout.LayoutParams).marginStart = if (visibleEntries.isEmpty()) 0 else menuItemSpacing
+			(overflowButton.layoutParams as LinearLayout.LayoutParams).marginStart =
+				if (visibleEntries.isEmpty()) 0 else menuItemSpacing
 			overflowButton.visibility = VISIBLE
 			container.addView(overflowButton)
 			buildOverflowPopup(overflowButton, masterMenu, overflowEntries.map { it.item }, isLeft)
@@ -907,7 +1113,35 @@ class ComponentToolbar @JvmOverloads constructor(
 		}
 	}
 
-	private fun buildOverflowPopup(anchor: AppCompatImageButton, masterMenu: Menu?, overflowItems: List<MenuItem>, isLeft: Boolean) {
+	/**
+	 * A reactive [MenuItem] mutation -see the "MenuItem reactivity" region-
+	 * can fire synchronously from inside the very click listener that is
+	 * still mid-ripple on the tapped entry (e.g. an `onMenuItemClicked`
+	 * callback doing `item.icon = ...` or `item.isEnabled = false`). That
+	 * mutation triggers [populateMenuSide], which detaches every entry
+	 * view -including the one the user just tapped- and replaces it with a
+	 * brand new instance before its ripple ever gets to play its normal
+	 * "unpress" fade. A view detached mid-ripple leaves that half-finished
+	 * frame rendered on screen as a ghost, since nothing forces a redraw of
+	 * that region again until an unrelated touch elsewhere triggers one.
+	 * Forcing every outgoing child straight to its resting state right
+	 * before [ViewGroup.removeAllViews] avoids ever leaving that stuck
+	 * frame behind.
+	 */
+	private fun clearOutgoingRipples(container: LinearLayout) {
+		for (index in 0 until container.childCount) {
+			val child = container.getChildAt(index)
+			child.isPressed = false
+			child.background?.jumpToCurrentState()
+		}
+	}
+
+	private fun buildOverflowPopup(
+		anchor: AppCompatImageButton,
+		masterMenu: Menu?,
+		overflowItems: List<MenuItem>,
+		isLeft: Boolean
+	) {
 		if (masterMenu == null) return
 		val popup = PopupMenu(context, anchor)
 		overflowItems.forEachIndexed { order, item ->
@@ -916,11 +1150,12 @@ class ComponentToolbar @JvmOverloads constructor(
 				.setEnabled(item.isEnabled)
 		}
 		popup.setOnMenuItemClickListener { proxyItem ->
-			val realItem = masterMenu.findItem(proxyItem.itemId) ?: return@setOnMenuItemClickListener false
+			val realItem =
+				masterMenu.findItem(proxyItem.itemId) ?: return@setOnMenuItemClickListener false
 			handleMenuItemClicked(masterMenu, wrapReactive(realItem, isLeft), isLeft)
 			true
 		}
-		anchor.setOnClickListener { popup.show() }
+		anchor.setOnClickListener { showPopupMenuClearingRipple(anchor, popup) }
 
 		if (isLeft) leftOverflowPopup = popup else rightOverflowPopup = popup
 	}
@@ -928,8 +1163,10 @@ class ComponentToolbar @JvmOverloads constructor(
 	private fun handleMenuItemClicked(menu: Menu, item: MenuItem, isLeft: Boolean) {
 		if (!item.isEnabled) return
 
-		val clickListener = if (isLeft) onLeftItemMenuClickListener else onRightItemMenuClickListener
-		val changedListener = if (isLeft) onLeftItemMenuChangedListener else onRightItemMenuChangedListener
+		val clickListener =
+			if (isLeft) onLeftItemMenuClickListener else onRightItemMenuClickListener
+		val changedListener =
+			if (isLeft) onLeftItemMenuChangedListener else onRightItemMenuChangedListener
 		val currentSelectedId = if (isLeft) selectedLeftItemId else selectedRightItemId
 
 		clickListener?.onMenuItemClicked(item)
@@ -945,15 +1182,22 @@ class ComponentToolbar @JvmOverloads constructor(
 
 		if (isLeft) selectedLeftItemId = item.itemId else selectedRightItemId = item.itemId
 
-		if (previousItem != null) changedListener?.onMenuUnselect(wrapReactive(previousItem, isLeft))
+		if (previousItem != null) changedListener?.onMenuUnselect(
+			wrapReactive(
+				previousItem,
+				isLeft
+			)
+		)
 		changedListener?.onMenuSelect(item)
 	}
 
 	private fun handleMenuItemLongClicked(menu: Menu, item: MenuItem, isLeft: Boolean): Boolean {
 		if (!item.isEnabled) return false
 
-		val longClickListener = if (isLeft) onLeftItemMenuLongClickListener else onRightItemMenuLongClickListener
-		val longChangedListener = if (isLeft) onLeftItemMenuLongChangedListener else onRightItemMenuLongChangedListener
+		val longClickListener =
+			if (isLeft) onLeftItemMenuLongClickListener else onRightItemMenuLongClickListener
+		val longChangedListener =
+			if (isLeft) onLeftItemMenuLongChangedListener else onRightItemMenuLongChangedListener
 		val consumed = longClickListener?.onMenuItemLongClicked(item) ?: false
 
 		val currentLongSelectedId = if (isLeft) longSelectedLeftItemId else longSelectedRightItemId
@@ -961,8 +1205,14 @@ class ComponentToolbar @JvmOverloads constructor(
 			longChangedListener?.onMenuLongReselect(item)
 		} else {
 			val previousItem = menu.findItem(currentLongSelectedId)
-			if (isLeft) longSelectedLeftItemId = item.itemId else longSelectedRightItemId = item.itemId
-			if (previousItem != null) longChangedListener?.onMenuLongUnselect(wrapReactive(previousItem, isLeft))
+			if (isLeft) longSelectedLeftItemId = item.itemId else longSelectedRightItemId =
+				item.itemId
+			if (previousItem != null) longChangedListener?.onMenuLongUnselect(
+				wrapReactive(
+					previousItem,
+					isLeft
+				)
+			)
 			longChangedListener?.onMenuLongSelect(item)
 		}
 		return consumed
@@ -983,7 +1233,9 @@ class ComponentToolbar @JvmOverloads constructor(
 			.also { it.scrollFlags = scrollFlags }
 
 		val currentParent = parent
-		if (currentParent is ViewGroup && currentParent !== appBarLayout) currentParent.removeView(this)
+		if (currentParent is ViewGroup && currentParent !== appBarLayout) currentParent.removeView(
+			this
+		)
 		if (parent !== appBarLayout) appBarLayout.addView(this, params) else layoutParams = params
 	}
 
@@ -1004,8 +1256,14 @@ class ComponentToolbar @JvmOverloads constructor(
 	fun setHandleWindowInsets(enabled: Boolean) {
 		if (enabled) {
 			ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
-				val statusBarInsets = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars())
-				view.setPadding(view.paddingLeft, statusBarInsets.top, view.paddingRight, view.paddingBottom)
+				val statusBarInsets =
+					insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+				view.setPadding(
+					view.paddingLeft,
+					statusBarInsets.top,
+					view.paddingRight,
+					view.paddingBottom
+				)
 				insets
 			}
 			requestApplyInsets()
@@ -1024,7 +1282,8 @@ class ComponentToolbar @JvmOverloads constructor(
 		measureFixedChild(navigationIconView, iconTouchTargetSize)
 		measureFixedChild(logoView, iconTouchTargetSize)
 
-		val fixedSideWidth = navigationIconView.measuredWidthOrZero() + logoView.measuredWidthOrZero()
+		val fixedSideWidth =
+			navigationIconView.measuredWidthOrZero() + logoView.measuredWidthOrZero()
 		val remainingForMenus = max(0, availableWidth - fixedSideWidth - minTitleReserve)
 		// Simple 50/50 split between both sides: keeps one side from hogging
 		// all the space at the other's expense (see populateMenuSide KDoc).
@@ -1033,8 +1292,9 @@ class ComponentToolbar @JvmOverloads constructor(
 		measureWrapContentChild(leftMenuView, perSideMenuCap)
 		measureWrapContentChild(rightMenuView, perSideMenuCap)
 
-		val sideBlocksWidth = fixedSideWidth + leftMenuView.measuredWidthOrZero() + rightMenuView.measuredWidthOrZero() +
-				titleBlockHorizontalMargin * 2
+		val sideBlocksWidth =
+			fixedSideWidth + leftMenuView.measuredWidthOrZero() + rightMenuView.measuredWidthOrZero() +
+					titleBlockHorizontalMargin * 2
 
 		val titleAvailableWidth = max(0, availableWidth - sideBlocksWidth)
 		val titleWidthSpec = MeasureSpec.makeMeasureSpec(
@@ -1042,17 +1302,29 @@ class ComponentToolbar @JvmOverloads constructor(
 			if (widthMode == MeasureSpec.UNSPECIFIED) MeasureSpec.UNSPECIFIED else MeasureSpec.AT_MOST
 		)
 
-		measureChild(titleView, titleWidthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
-		measureChild(subtitleView, titleWidthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+		measureChild(
+			titleView,
+			titleWidthSpec,
+			MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+		)
+		measureChild(
+			subtitleView,
+			titleWidthSpec,
+			MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+		)
 
-		val titleBlockHeight = titleView.measuredHeightOrZero() + subtitleView.measuredHeightOrZero() +
-				titleMarginTop + titleMarginBottom
+		val titleBlockHeight =
+			titleView.measuredHeightOrZero() + subtitleView.measuredHeightOrZero() +
+					titleMarginTop + titleMarginBottom
 
 		val tallestChild = max(
 			titleBlockHeight,
 			max(
 				navigationIconView.measuredHeightOrZero(),
-				max(logoView.measuredHeightOrZero(), max(leftMenuView.measuredHeightOrZero(), rightMenuView.measuredHeightOrZero()))
+				max(
+					logoView.measuredHeightOrZero(),
+					max(leftMenuView.measuredHeightOrZero(), rightMenuView.measuredHeightOrZero())
+				)
 			)
 		)
 
@@ -1080,7 +1352,14 @@ class ComponentToolbar @JvmOverloads constructor(
 		layoutTitleSubtitleBlock(titleBlockLeftEdge, titleBlockRightEdge, height, isRtl, l, r)
 	}
 
-	private fun layoutChildAtStart(child: View, cursorStart: Int, parentHeight: Int, isRtl: Boolean, l: Int, r: Int): Int {
+	private fun layoutChildAtStart(
+		child: View,
+		cursorStart: Int,
+		parentHeight: Int,
+		isRtl: Boolean,
+		l: Int,
+		r: Int
+	): Int {
 		if (child.visibility == GONE) return cursorStart
 		val childWidth = child.measuredWidth
 		val childHeight = child.measuredHeight
@@ -1096,7 +1375,14 @@ class ComponentToolbar @JvmOverloads constructor(
 		return cursorStart + childWidth
 	}
 
-	private fun layoutChildAtEnd(child: View, cursorEnd: Int, parentHeight: Int, isRtl: Boolean, l: Int, r: Int): Int {
+	private fun layoutChildAtEnd(
+		child: View,
+		cursorEnd: Int,
+		parentHeight: Int,
+		isRtl: Boolean,
+		l: Int,
+		r: Int
+	): Int {
 		if (child.visibility == GONE) return cursorEnd
 		val childWidth = child.measuredWidth
 		val childHeight = child.measuredHeight
@@ -1120,7 +1406,14 @@ class ComponentToolbar @JvmOverloads constructor(
 	 * shrinking the layout rectangle -this way each line can align
 	 * differently without one pushing the other around.
 	 */
-	private fun layoutTitleSubtitleBlock(leftEdge: Int, rightEdge: Int, parentHeight: Int, isRtl: Boolean, l: Int, r: Int) {
+	private fun layoutTitleSubtitleBlock(
+		leftEdge: Int,
+		rightEdge: Int,
+		parentHeight: Int,
+		isRtl: Boolean,
+		l: Int,
+		r: Int
+	) {
 		val titleVisible = titleView.visibility != GONE
 		val subtitleVisible = subtitleView.visibility != GONE
 
@@ -1171,8 +1464,12 @@ class ComponentToolbar @JvmOverloads constructor(
 	private fun View.measuredWidthOrZero() = if (visibility == GONE) 0 else measuredWidth
 	private fun View.measuredHeightOrZero() = if (visibility == GONE) 0 else measuredHeight
 
-	override fun generateDefaultLayoutParams(): LayoutParams = MarginLayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-	override fun generateLayoutParams(attrs: AttributeSet?): LayoutParams = MarginLayoutParams(context, attrs)
+	override fun generateDefaultLayoutParams(): LayoutParams =
+		MarginLayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+
+	override fun generateLayoutParams(attrs: AttributeSet?): LayoutParams =
+		MarginLayoutParams(context, attrs)
+
 	override fun generateLayoutParams(p: LayoutParams?): LayoutParams = MarginLayoutParams(p)
 	override fun checkLayoutParams(p: LayoutParams?): Boolean = p is MarginLayoutParams
 
@@ -1183,26 +1480,47 @@ class ComponentToolbar @JvmOverloads constructor(
 	// `com.deavidig.components.toolbar`, adjust the `R` import to yours.
 
 	private fun applyXmlAttributes(attributeSet: AttributeSet, defStyleAttr: Int) {
-		val typedArray = context.obtainStyledAttributes(attributeSet, R.styleable.ComponentToolbar, defStyleAttr, 0)
+		val typedArray = context.obtainStyledAttributes(
+			attributeSet,
+			R.styleable.ComponentToolbar,
+			defStyleAttr,
+			0
+		)
 		try {
 			typedArray.getString(R.styleable.ComponentToolbar_title)?.let { setTitle(it) }
 			typedArray.getString(R.styleable.ComponentToolbar_subtitle)?.let { setSubtitle(it) }
 
 			if (typedArray.hasValue(R.styleable.ComponentToolbar_titleTextColor)) {
-				setTitleTextColor(typedArray.getColor(R.styleable.ComponentToolbar_titleTextColor, titleView.currentTextColor))
+				setTitleTextColor(
+					typedArray.getColor(
+						R.styleable.ComponentToolbar_titleTextColor,
+						titleView.currentTextColor
+					)
+				)
 			}
 			if (typedArray.hasValue(R.styleable.ComponentToolbar_titleTextSize)) {
-				val sizePx = typedArray.getDimension(R.styleable.ComponentToolbar_titleTextSize, titleView.textSize)
+				val sizePx = typedArray.getDimension(
+					R.styleable.ComponentToolbar_titleTextSize,
+					titleView.textSize
+				)
 				setTitleTextSize(sizePx / resources.displayMetrics.scaledDensity)
 			}
 			typedArray.getResourceId(R.styleable.ComponentToolbar_titleTextAppearance, 0)
 				.takeIf { it != 0 }?.let { setTitleTextAppearance(it) }
 
 			if (typedArray.hasValue(R.styleable.ComponentToolbar_subtitleTextColor)) {
-				setSubtitleTextColor(typedArray.getColor(R.styleable.ComponentToolbar_subtitleTextColor, subtitleView.currentTextColor))
+				setSubtitleTextColor(
+					typedArray.getColor(
+						R.styleable.ComponentToolbar_subtitleTextColor,
+						subtitleView.currentTextColor
+					)
+				)
 			}
 			if (typedArray.hasValue(R.styleable.ComponentToolbar_subtitleTextSize)) {
-				val sizePx = typedArray.getDimension(R.styleable.ComponentToolbar_subtitleTextSize, subtitleView.textSize)
+				val sizePx = typedArray.getDimension(
+					R.styleable.ComponentToolbar_subtitleTextSize,
+					subtitleView.textSize
+				)
 				setSubtitleTextSize(sizePx / resources.displayMetrics.scaledDensity)
 			}
 			typedArray.getResourceId(R.styleable.ComponentToolbar_subtitleTextAppearance, 0)
@@ -1210,33 +1528,56 @@ class ComponentToolbar @JvmOverloads constructor(
 
 			typedArray.getInt(R.styleable.ComponentToolbar_titleAlignment, titleAlignment.ordinal)
 				.let { setTitleAlignment(HorizontalAlignment.values()[it]) }
-			typedArray.getInt(R.styleable.ComponentToolbar_subtitleAlignment, subtitleAlignment.ordinal)
+			typedArray.getInt(
+				R.styleable.ComponentToolbar_subtitleAlignment,
+				subtitleAlignment.ordinal
+			)
 				.let { setSubtitleAlignment(HorizontalAlignment.values()[it]) }
 
-			typedArray.getDrawable(R.styleable.ComponentToolbar_navigationIcon)?.let { setNavigationIcon(it) }
+			typedArray.getDrawable(R.styleable.ComponentToolbar_navigationIcon)
+				?.let { setNavigationIcon(it) }
 			if (typedArray.hasValue(R.styleable.ComponentToolbar_navigationIconTint)) {
-				setNavigationIconTint(typedArray.getColor(R.styleable.ComponentToolbar_navigationIconTint, Color.BLACK))
+				setNavigationIconTint(
+					typedArray.getColor(
+						R.styleable.ComponentToolbar_navigationIconTint,
+						Color.BLACK
+					)
+				)
 			}
-			typedArray.getString(R.styleable.ComponentToolbar_navigationContentDescription)?.let { setNavigationContentDescription(it) }
+			typedArray.getString(R.styleable.ComponentToolbar_navigationContentDescription)
+				?.let { setNavigationContentDescription(it) }
 
 			typedArray.getDrawable(R.styleable.ComponentToolbar_logo)?.let { setLogo(it) }
 			if (typedArray.hasValue(R.styleable.ComponentToolbar_logoTint)) {
 				setLogoTint(typedArray.getColor(R.styleable.ComponentToolbar_logoTint, Color.BLACK))
 			}
-			typedArray.getString(R.styleable.ComponentToolbar_logoContentDescription)?.let { setLogoContentDescription(it) }
+			typedArray.getString(R.styleable.ComponentToolbar_logoContentDescription)
+				?.let { setLogoContentDescription(it) }
 
-			typedArray.getResourceId(R.styleable.ComponentToolbar_leftMenu, 0).takeIf { it != 0 }?.let { inflateLeftMenu(it) }
-			typedArray.getResourceId(R.styleable.ComponentToolbar_rightMenu, 0).takeIf { it != 0 }?.let { inflateRightMenu(it) }
-			typedArray.getDrawable(R.styleable.ComponentToolbar_leftOverflowIcon)?.let { setLeftOverflowIcon(it) }
-			typedArray.getDrawable(R.styleable.ComponentToolbar_rightOverflowIcon)?.let { setRightOverflowIcon(it) }
+			typedArray.getResourceId(R.styleable.ComponentToolbar_leftMenu, 0).takeIf { it != 0 }
+				?.let { inflateLeftMenu(it) }
+			typedArray.getResourceId(R.styleable.ComponentToolbar_rightMenu, 0).takeIf { it != 0 }
+				?.let { inflateRightMenu(it) }
+			typedArray.getDrawable(R.styleable.ComponentToolbar_leftOverflowIcon)
+				?.let { setLeftOverflowIcon(it) }
+			typedArray.getDrawable(R.styleable.ComponentToolbar_rightOverflowIcon)
+				?.let { setRightOverflowIcon(it) }
 
 			if (typedArray.hasValue(R.styleable.ComponentToolbar_contentInsetStartWithNavigation)) {
 				setContentInsetStartWithNavigation(
-					typedArray.getDimensionPixelSize(R.styleable.ComponentToolbar_contentInsetStartWithNavigation, contentInsetStart)
+					typedArray.getDimensionPixelSize(
+						R.styleable.ComponentToolbar_contentInsetStartWithNavigation,
+						contentInsetStart
+					)
 				)
 			}
 			if (typedArray.hasValue(R.styleable.ComponentToolbar_contentInsetEnd)) {
-				setContentInsetEnd(typedArray.getDimensionPixelSize(R.styleable.ComponentToolbar_contentInsetEnd, contentInsetEnd))
+				setContentInsetEnd(
+					typedArray.getDimensionPixelSize(
+						R.styleable.ComponentToolbar_contentInsetEnd,
+						contentInsetEnd
+					)
+				)
 			}
 		} finally {
 			typedArray.recycle()
@@ -1252,8 +1593,12 @@ class ComponentToolbar @JvmOverloads constructor(
 	// back safely to the defaults the component already had.
 
 	private fun applyMaterial3Defaults() {
-		val onSurface = resolveThemeColor(com.google.android.material.R.attr.colorOnSurface, resolveDefaultIconTintColor())
-		val onSurfaceVariant = resolveThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant, onSurface)
+		val onSurface = resolveThemeColor(
+			com.google.android.material.R.attr.colorOnSurface,
+			resolveDefaultIconTintColor()
+		)
+		val onSurfaceVariant =
+			resolveThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant, onSurface)
 
 		resolveThemeAttrResId(com.google.android.material.R.attr.textAppearanceTitleLarge)
 			.takeIf { it != 0 }?.let { setTitleTextAppearance(it) }
@@ -1329,7 +1674,11 @@ class ComponentToolbar @JvmOverloads constructor(
 
 
 	private fun dpToPx(dp: Int): Int =
-		TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics).toInt()
+		TypedValue.applyDimension(
+			TypedValue.COMPLEX_UNIT_DIP,
+			dp.toFloat(),
+			resources.displayMetrics
+		).toInt()
 
 	private fun resolveActionBarSize(): Int {
 		val typedValue = TypedValue()
@@ -1348,9 +1697,13 @@ class ComponentToolbar @JvmOverloads constructor(
 	 */
 	private fun createCompactRipple(): Drawable {
 		val typedValue = TypedValue()
-		val resolved = context.theme.resolveAttribute(android.R.attr.colorControlHighlight, typedValue, true)
+		val resolved =
+			context.theme.resolveAttribute(android.R.attr.colorControlHighlight, typedValue, true)
 		val rippleColorInt = if (resolved) {
-			if (typedValue.resourceId != 0) ContextCompat.getColor(context, typedValue.resourceId) else typedValue.data
+			if (typedValue.resourceId != 0) ContextCompat.getColor(
+				context,
+				typedValue.resourceId
+			) else typedValue.data
 		} else {
 			Color.LTGRAY
 		}
@@ -1361,13 +1714,18 @@ class ComponentToolbar @JvmOverloads constructor(
 
 	private fun resolveSelectableItemBackgroundBorderless(): Drawable? {
 		val typedValue = TypedValue()
-		val resolved = context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, typedValue, true)
+		val resolved = context.theme.resolveAttribute(
+			android.R.attr.selectableItemBackgroundBorderless,
+			typedValue,
+			true
+		)
 		return if (resolved) ContextCompat.getDrawable(context, typedValue.resourceId) else null
 	}
 
 	private fun resolveDefaultIconTintColor(): Int {
 		val typedValue = TypedValue()
-		val resolved = context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
+		val resolved =
+			context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
 		return if (resolved && typedValue.resourceId != 0) {
 			ContextCompat.getColor(context, typedValue.resourceId)
 		} else {
@@ -1378,12 +1736,20 @@ class ComponentToolbar @JvmOverloads constructor(
 	private fun resolveThemeColor(@AttrRes attrId: Int, fallback: Int): Int {
 		val typedValue = TypedValue()
 		if (!context.theme.resolveAttribute(attrId, typedValue, true)) return fallback
-		return if (typedValue.resourceId != 0) ContextCompat.getColor(context, typedValue.resourceId) else typedValue.data
+		return if (typedValue.resourceId != 0) ContextCompat.getColor(
+			context,
+			typedValue.resourceId
+		) else typedValue.data
 	}
 
 	private fun resolveThemeAttrResId(@AttrRes attrId: Int): Int {
 		val typedValue = TypedValue()
-		return if (context.theme.resolveAttribute(attrId, typedValue, true)) typedValue.resourceId else 0
+		return if (context.theme.resolveAttribute(
+				attrId,
+				typedValue,
+				true
+			)
+		) typedValue.resourceId else 0
 	}
 
 	/**
@@ -1410,8 +1776,14 @@ class ComponentToolbar @JvmOverloads constructor(
 			canvas.drawCircle(centerX + spacing, centerY, radius, paint)
 		}
 
-		override fun setAlpha(alpha: Int) { paint.alpha = alpha }
-		override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) { paint.colorFilter = colorFilter }
+		override fun setAlpha(alpha: Int) {
+			paint.alpha = alpha
+		}
+
+		override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) {
+			paint.colorFilter = colorFilter
+		}
+
 		override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 	}
 }

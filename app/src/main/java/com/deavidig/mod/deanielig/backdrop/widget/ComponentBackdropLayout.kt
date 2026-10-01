@@ -16,12 +16,12 @@ import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
 import androidx.annotation.ColorInt
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.graphics.drawable.toDrawable
 import androidx.customview.view.AbsSavedState
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import com.deavidig.sketchprojectpro.R
 import com.google.android.material.color.MaterialColors
 import kotlin.math.roundToInt
-import androidx.core.graphics.drawable.toDrawable
 
 /**
  * Material "backdrop" container hosting exactly two layers — a back layer,
@@ -156,17 +156,20 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 			R.styleable.ComponentBackdropLayout_backDropAnimationDuration,
 			DEFAULT_ANIMATION_DURATION_MS
 		).toLong()
-		currentState = if (typedArray.getInt(R.styleable.ComponentBackdropLayout_initialState, 0) == 1) {
-			BackDropState.REVEALED
-		} else {
-			BackDropState.CONCEALED
-		}
+		currentState =
+			if (typedArray.getInt(R.styleable.ComponentBackdropLayout_initialState, 0) == 1) {
+				BackDropState.REVEALED
+			} else {
+				BackDropState.CONCEALED
+			}
 		frontLayerDarkenAmount = typedArray.getFloat(
 			R.styleable.ComponentBackdropLayout_frontLayerDarkenAmount,
 			DEFAULT_FRONT_LAYER_DARKEN_AMOUNT
 		).coerceIn(0f, 1f)
-		val explicitBackBackground = typedArray.getDrawable(R.styleable.ComponentBackdropLayout_backLayoutBackground)
-		val explicitFrontBackground = typedArray.getDrawable(R.styleable.ComponentBackdropLayout_frontLayoutBackground)
+		val explicitBackBackground =
+			typedArray.getDrawable(R.styleable.ComponentBackdropLayout_backLayoutBackground)
+		val explicitFrontBackground =
+			typedArray.getDrawable(R.styleable.ComponentBackdropLayout_frontLayoutBackground)
 		typedArray.recycle()
 
 		backLayerContainer = FrameLayout(context).apply {
@@ -176,6 +179,18 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 		frontLayerContainer = FrameLayout(context).apply {
 			id = R.id.component_backdrop_front_layer_container
 			elevation = frontLayerElevationPx
+			// The two containers are full-bounds siblings that overlap wherever
+			// the front layer is drawn on top of the back layer (the whole area
+			// when CONCEALED, just the peek strip when REVEALED). ViewGroup only
+			// stops at the topmost child for ACTION_DOWN if that child's own
+			// subtree actually consumes the touch; if the front layer's fragment
+			// content doesn't (e.g. a plain, non-clickable header), the event
+			// would otherwise fall through to the back layer container beneath
+			// it at that same point. Marking the front layer clickable makes its
+			// own View.onTouchEvent() consume any touch that reaches it, so it
+			// always "wins" the overlap instead of leaking to the back layer.
+			isClickable = true
+			isFocusable = true
 			clipToOutline = true
 			outlineProvider = object : ViewOutlineProvider() {
 				override fun getOutline(view: View, outline: Outline) {
@@ -190,13 +205,23 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 			}
 		}
 
-		addView(backLayerContainer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-		addView(frontLayerContainer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+		addView(
+			backLayerContainer,
+			LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+		)
+		addView(
+			frontLayerContainer,
+			LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+		)
 	}
 
 	/** Resolves the theme's `?attr/colorSurface`, falling back to a neutral gray if unavailable. */
 	private fun themeSurfaceColor(): Int =
-		MaterialColors.getColor(this, com.google.android.material.R.attr.colorSurface, DEFAULT_SURFACE_COLOR)
+		MaterialColors.getColor(
+			this,
+			com.google.android.material.R.attr.colorSurface,
+			DEFAULT_SURFACE_COLOR
+		)
 
 	/** Returns [color] shifted towards black by [amount] (0f = unchanged, 1f = black), preserving alpha. */
 	@ColorInt
@@ -215,7 +240,8 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 	}
 
 	private fun translationYFor(state: BackDropState, heightPx: Int = height): Float =
-		if (state == BackDropState.REVEALED) (heightPx - peekHeightPx).toFloat().coerceAtLeast(0f) else 0f
+		if (state == BackDropState.REVEALED) (heightPx - peekHeightPx).toFloat()
+			.coerceAtLeast(0f) else 0f
 
 	/** Slides the front layer down, uncovering the back layer; animates unless [animate] is `false`. */
 	public fun reveal(animate: Boolean = true) {
@@ -229,7 +255,8 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 
 	/** Switches between [BackDropState.CONCEALED] and [BackDropState.REVEALED]. */
 	public fun toggle(animate: Boolean = true) {
-		val target = if (currentState == BackDropState.CONCEALED) BackDropState.REVEALED else BackDropState.CONCEALED
+		val target =
+			if (currentState == BackDropState.CONCEALED) BackDropState.REVEALED else BackDropState.CONCEALED
 		setState(target, animate)
 	}
 
@@ -253,11 +280,12 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 			return
 		}
 
-		val animator = ValueAnimator.ofFloat(frontLayerContainer.translationY, targetTranslationY).apply {
-			duration = animationDurationMs
-			interpolator = FastOutSlowInInterpolator()
-			addUpdateListener { frontLayerContainer.translationY = it.animatedValue as Float }
-		}
+		val animator =
+			ValueAnimator.ofFloat(frontLayerContainer.translationY, targetTranslationY).apply {
+				duration = animationDurationMs
+				interpolator = FastOutSlowInInterpolator()
+				addUpdateListener { frontLayerContainer.translationY = it.animatedValue as Float }
+			}
 		revealAnimator = animator
 		animator.addListener(object : AnimatorListenerAdapter() {
 			override fun onAnimationEnd(animation: Animator) {
@@ -278,7 +306,8 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 		stateChangedListeners.forEach { it.onBackDropStateChanged(state) }
 		// Exposed for TalkBack: announces the backdrop's current state when
 		// focused, since its own content is just two opaque fragment containers.
-		contentDescription = if (state == BackDropState.REVEALED) "Backdrop revealed" else "Backdrop concealed"
+		contentDescription =
+			if (state == BackDropState.REVEALED) "Backdrop revealed" else "Backdrop concealed"
 	}
 
 	/** Registers a listener notified whenever the backdrop finishes a state transition. */
@@ -308,7 +337,11 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 	/** Sets the front layer's corner radius, in pixels, and refreshes its outline. */
 	public fun setFrontLayerCornerRadius(px: Float) {
 		cornerRadiusPx = px
-		frontLayerContainer.invalidate()
+		// clipToOutline clips against a cached Outline, which a plain
+		// invalidate() does not recompute — without invalidateOutline() the
+		// rounded-corner clip silently keeps using the old radius until the
+		// view is resized (which forces a fresh outline via onSizeChanged).
+		frontLayerContainer.invalidateOutline()
 	}
 
 	/** Returns the duration, in milliseconds, of the reveal/conceal animation. */
@@ -362,7 +395,8 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 	 */
 	public fun resetFrontLayerBackgroundToTheme() {
 		usesAutoFrontLayerBackground = true
-		frontLayerContainer.background = ColorDrawable(darken(themeSurfaceColor(), frontLayerDarkenAmount))
+		frontLayerContainer.background =
+			ColorDrawable(darken(themeSurfaceColor(), frontLayerDarkenAmount))
 	}
 
 	/** Returns how much darker the front layer's default background is than the back layer's, from 0f to 1f. */
@@ -378,7 +412,8 @@ public class ComponentBackdropLayout @JvmOverloads constructor(
 	public fun setFrontLayerDarkenAmount(amount: Float) {
 		frontLayerDarkenAmount = amount.coerceIn(0f, 1f)
 		if (usesAutoFrontLayerBackground) {
-			frontLayerContainer.background = ColorDrawable(darken(themeSurfaceColor(), frontLayerDarkenAmount))
+			frontLayerContainer.background =
+				ColorDrawable(darken(themeSurfaceColor(), frontLayerDarkenAmount))
 		}
 	}
 

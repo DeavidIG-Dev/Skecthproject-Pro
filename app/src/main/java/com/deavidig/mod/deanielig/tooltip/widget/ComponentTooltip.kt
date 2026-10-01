@@ -29,11 +29,9 @@ import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.shape.ShapeAppearanceModel
-import com.google.android.material.R as MaterialR
 import kotlin.math.max
 import kotlin.math.min
-import androidx.core.graphics.toColorInt
-import com.deavidig.sketchprojectpro.R
+import com.google.android.material.R as MaterialR
 
 /**
  * Tooltip M3 anclado a una View con la apariencia y API inspiradas en `MaterialAlertDialogBuilder`.
@@ -54,7 +52,7 @@ class ComponentTooltip(private val anchor: View) {
 		const val BUTTON_NEGATIVE = DialogInterface.BUTTON_NEGATIVE
 		const val BUTTON_NEUTRAL = DialogInterface.BUTTON_NEUTRAL
 
-		private var active: ComponentTooltip? = null
+		// private var active: ComponentTooltip? = null (Global, but is deprecated)
 
 		private val DEFAULT_PLAIN_CONTAINER = Color.parseColor("#313033")
 		private val DEFAULT_PLAIN_ON_CONTAINER = Color.parseColor("#F4EFF4")
@@ -86,6 +84,7 @@ class ComponentTooltip(private val anchor: View) {
 	private var customView: View? = null
 	private var placement: Placement = Placement.AUTO
 	private var dismissAfterMs: Long = 0L
+	private var cancelable: Boolean = true
 
 	private var positiveText: CharSequence? = null
 	private var positiveListener: OnClickListener? = null
@@ -99,13 +98,16 @@ class ComponentTooltip(private val anchor: View) {
 	// ---- API Fluent ----
 
 	fun setIcon(drawable: Drawable?): ComponentTooltip = apply { iconDrawable = drawable }
-	fun setIcon(@DrawableRes resId: Int): ComponentTooltip = apply { iconDrawable = ContextCompat.getDrawable(anchor.context, resId) }
+	fun setIcon(@DrawableRes resId: Int): ComponentTooltip =
+		apply { iconDrawable = ContextCompat.getDrawable(anchor.context, resId) }
 
 	fun setTitle(title: CharSequence?): ComponentTooltip = apply { titleText = title }
-	fun setTitle(@StringRes resId: Int): ComponentTooltip = apply { titleText = anchor.context.getText(resId) }
+	fun setTitle(@StringRes resId: Int): ComponentTooltip =
+		apply { titleText = anchor.context.getText(resId) }
 
 	fun setMessage(message: CharSequence?): ComponentTooltip = apply { messageText = message }
-	fun setMessage(@StringRes resId: Int): ComponentTooltip = apply { messageText = anchor.context.getText(resId) }
+	fun setMessage(@StringRes resId: Int): ComponentTooltip =
+		apply { messageText = anchor.context.getText(resId) }
 
 	fun setCustomView(view: View?): ComponentTooltip = apply { customView = view }
 	fun setCustomView(@LayoutRes layoutResId: Int): ComponentTooltip = apply {
@@ -115,31 +117,49 @@ class ComponentTooltip(private val anchor: View) {
 
 	fun getCustomView(): View? = customView
 
-	fun setPositiveButton(text: CharSequence, listener: OnClickListener?): ComponentTooltip = apply {
-		positiveText = text; positiveListener = listener
-	}
+	fun setPositiveButton(text: CharSequence, listener: OnClickListener?): ComponentTooltip =
+		apply {
+			positiveText = text; positiveListener = listener
+		}
+
 	fun setPositiveButton(@StringRes resId: Int, listener: OnClickListener?): ComponentTooltip =
 		setPositiveButton(anchor.context.getText(resId), listener)
 
-	fun setNegativeButton(text: CharSequence, listener: OnClickListener?): ComponentTooltip = apply {
-		negativeText = text; negativeListener = listener
-	}
+	fun setNegativeButton(text: CharSequence, listener: OnClickListener?): ComponentTooltip =
+		apply {
+			negativeText = text; negativeListener = listener
+		}
+
 	fun setNegativeButton(@StringRes resId: Int, listener: OnClickListener?): ComponentTooltip =
 		setNegativeButton(anchor.context.getText(resId), listener)
 
 	fun setNeutralButton(text: CharSequence, listener: OnClickListener?): ComponentTooltip = apply {
 		neutralText = text; neutralListener = listener
 	}
+
 	fun setNeutralButton(@StringRes resId: Int, listener: OnClickListener?): ComponentTooltip =
 		setNeutralButton(anchor.context.getText(resId), listener)
 
 	fun setPlacement(placement: Placement): ComponentTooltip = apply { this.placement = placement }
 	fun setDismissAfter(ms: Long): ComponentTooltip = apply { dismissAfterMs = ms }
 
+	/**
+	 * Controla si el tooltip se puede descartar tocando fuera de él.
+	 * Solo tiene efecto en el tooltip "rico" (con título, ícono, botones o vista personalizada):
+	 * si es `false`, únicamente los botones (positive/negative/neutral) podrán cerrarlo.
+	 * En el tooltip plano (SimpleTooltip) esta propiedad no aplica: siempre se puede
+	 * descartar tocando fuera, ya que no cuenta con botones alternativos para cerrarlo.
+	 *
+	 * Nota: independientemente de este valor, el tooltip nunca roba el foco de la pantalla
+	 * (ver [presentPopup], `isFocusable` siempre queda en `false`).
+	 */
+	fun setCancelable(cancelable: Boolean): ComponentTooltip =
+		apply { this.cancelable = cancelable }
+
 	// ---- Mostrar y Ocultar ----
 
 	fun show(): ComponentTooltip = apply {
-		active?.dismiss()
+		// active?.dismiss()
 
 		val context = anchor.context
 		val isRich = titleText != null ||
@@ -150,35 +170,64 @@ class ComponentTooltip(private val anchor: View) {
 				customView != null
 
 		if (isRich) {
-			presentPopup(buildRichView(context), elevationDp = 12f)
+			presentPopup(buildRichView(context), elevationDp = 12f, respectsCancelable = true)
 		} else {
-			presentPopup(buildPlainView(context), elevationDp = 2f)
+			presentPopup(buildPlainView(context), elevationDp = 2f, respectsCancelable = false)
 		}
-		active = this
+		// active = this
 	}
 
 	fun dismiss() {
 		popup?.dismiss()
 		popup = null
-		if (active === this) active = null
+		// if (active === this) active = null
 	}
 
 	// ---- Construcción interna ----
 
 	private fun buildPlainView(context: Context): PlainTooltipView {
-		val container = MaterialColors.getColor(anchor, MaterialR.attr.colorSurfaceInverse, DEFAULT_PLAIN_CONTAINER)
-		val onContainer = MaterialColors.getColor(anchor, MaterialR.attr.colorOnSurfaceInverse, DEFAULT_PLAIN_ON_CONTAINER)
-		val corner = resolveCornerRadiusPx(context, MaterialR.attr.shapeAppearanceCornerExtraSmall, fallbackDp = 4f)
+		val container = MaterialColors.getColor(
+			anchor,
+			MaterialR.attr.colorSurfaceInverse,
+			DEFAULT_PLAIN_CONTAINER
+		)
+		val onContainer = MaterialColors.getColor(
+			anchor,
+			MaterialR.attr.colorOnSurfaceInverse,
+			DEFAULT_PLAIN_ON_CONTAINER
+		)
+		val corner = resolveCornerRadiusPx(
+			context,
+			MaterialR.attr.shapeAppearanceCornerExtraSmall,
+			fallbackDp = 4f
+		)
 		return PlainTooltipView(context, messageText ?: "", container, onContainer, corner)
 	}
 
 	private fun buildRichView(context: Context): RichTooltipView {
-		val container = MaterialColors.getColor(anchor, MaterialR.attr.colorSurfaceContainerHigh, DEFAULT_RICH_CONTAINER)
-		val onSurface = MaterialColors.getColor(anchor, MaterialR.attr.colorOnSurface, DEFAULT_ON_SURFACE)
-		val onSurfaceVariant = MaterialColors.getColor(anchor, MaterialR.attr.colorOnSurfaceVariant, DEFAULT_ON_SURFACE_VARIANT)
-		val primary = MaterialColors.getColor(anchor, androidx.appcompat.R.attr.colorPrimary, DEFAULT_COLOR_PRIMARY)
+		val container = MaterialColors.getColor(
+			anchor,
+			MaterialR.attr.colorSurfaceContainerHigh,
+			DEFAULT_RICH_CONTAINER
+		)
+		val onSurface =
+			MaterialColors.getColor(anchor, MaterialR.attr.colorOnSurface, DEFAULT_ON_SURFACE)
+		val onSurfaceVariant = MaterialColors.getColor(
+			anchor,
+			MaterialR.attr.colorOnSurfaceVariant,
+			DEFAULT_ON_SURFACE_VARIANT
+		)
+		val primary = MaterialColors.getColor(
+			anchor,
+			androidx.appcompat.R.attr.colorPrimary,
+			DEFAULT_COLOR_PRIMARY
+		)
 
-		val corner = resolveCornerRadiusPx(context, MaterialR.attr.shapeAppearanceCornerExtraLarge, fallbackDp = 20f)
+		val corner = resolveCornerRadiusPx(
+			context,
+			MaterialR.attr.shapeAppearanceCornerExtraLarge,
+			fallbackDp = 20f
+		)
 
 		return RichTooltipView(
 			context = context,
@@ -203,7 +252,11 @@ class ComponentTooltip(private val anchor: View) {
 
 	// ---- Posicionamiento ----
 
-	private fun <T> presentPopup(contentView: T, elevationDp: Float) where T : View, T : ArrowHost {
+	private fun <T> presentPopup(
+		contentView: T,
+		elevationDp: Float,
+		respectsCancelable: Boolean
+	) where T : View, T : ArrowHost {
 		val context = anchor.context
 		val isRtl = context.resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL
 
@@ -213,8 +266,11 @@ class ComponentTooltip(private val anchor: View) {
 			ViewGroup.LayoutParams.WRAP_CONTENT,
 			false
 		).apply {
-			isOutsideTouchable = true
-			isFocusable = true
+			// El tooltip nunca debe robar el foco de la pantalla (teclado, vista actual, etc.)
+			isFocusable = false
+			// El cierre al tocar fuera solo se puede desactivar en el tooltip rico;
+			// el plano (SimpleTooltip) siempre se puede cerrar tocando afuera.
+			isOutsideTouchable = if (respectsCancelable) cancelable else true
 			elevation = dp(context, elevationDp)
 		}
 
@@ -254,24 +310,28 @@ class ComponentTooltip(private val anchor: View) {
 				y = anchorLoc[1] - contentHeight - margin
 				contentView.arrowOffset = (anchorLoc[0] + anchor.width / 2f) - x
 			}
+
 			Placement.BOTTOM -> {
 				contentView.arrowDir = ArrowDirection.UP
 				x = anchorLoc[0] + anchor.width / 2 - contentWidth / 2
 				y = anchorLoc[1] + anchor.height + margin
 				contentView.arrowOffset = (anchorLoc[0] + anchor.width / 2f) - x
 			}
+
 			Placement.LEFT -> {
 				contentView.arrowDir = ArrowDirection.RIGHT
 				x = anchorLoc[0] - contentWidth - margin
 				y = anchorLoc[1] + anchor.height / 2 - contentHeight / 2
 				contentView.arrowOffset = (anchorLoc[1] + anchor.height / 2f) - y
 			}
+
 			Placement.RIGHT -> {
 				contentView.arrowDir = ArrowDirection.LEFT
 				x = anchorLoc[0] + anchor.width + margin
 				y = anchorLoc[1] + anchor.height / 2 - contentHeight / 2
 				contentView.arrowOffset = (anchorLoc[1] + anchor.height / 2f) - y
 			}
+
 			else -> {}
 		}
 
@@ -322,7 +382,11 @@ private interface ArrowHost {
 private fun dp(context: Context, value: Float): Float =
 	TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, context.resources.displayMetrics)
 
-private class TooltipBackground(context: Context, containerColor: Int, private val maxCorner: Float) {
+private class TooltipBackground(
+	context: Context,
+	containerColor: Int,
+	private val maxCorner: Float
+) {
 	val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
 		color = containerColor
 		style = Paint.Style.FILL
@@ -332,11 +396,19 @@ private class TooltipBackground(context: Context, containerColor: Int, private v
 
 	private val minCorner = dp(context, 7f)
 
-	fun draw(canvas: Canvas, width: Int, height: Int, arrowDir: ComponentTooltip.ArrowDirection, arrowOffset: Float) {
+	fun draw(
+		canvas: Canvas,
+		width: Int,
+		height: Int,
+		arrowDir: ComponentTooltip.ArrowDirection,
+		arrowOffset: Float
+	) {
 		val boxLeft = if (arrowDir == ComponentTooltip.ArrowDirection.LEFT) arrowH else 0f
 		val boxTop = if (arrowDir == ComponentTooltip.ArrowDirection.UP) arrowH else 0f
-		val boxRight = if (arrowDir == ComponentTooltip.ArrowDirection.RIGHT) width - arrowH else width.toFloat()
-		val boxBottom = if (arrowDir == ComponentTooltip.ArrowDirection.DOWN) height - arrowH else height.toFloat()
+		val boxRight =
+			if (arrowDir == ComponentTooltip.ArrowDirection.RIGHT) width - arrowH else width.toFloat()
+		val boxBottom =
+			if (arrowDir == ComponentTooltip.ArrowDirection.DOWN) height - arrowH else height.toFloat()
 
 		var topLeft = maxCorner
 		var topRight = maxCorner
@@ -348,14 +420,17 @@ private class TooltipBackground(context: Context, containerColor: Int, private v
 				topLeft = calculateDynamicCorner(arrowOffset, 0f, width.toFloat())
 				topRight = calculateDynamicCorner(width - arrowOffset, 0f, width.toFloat())
 			}
+
 			ComponentTooltip.ArrowDirection.DOWN -> {
 				bottomLeft = calculateDynamicCorner(arrowOffset, 0f, width.toFloat())
 				bottomRight = calculateDynamicCorner(width - arrowOffset, 0f, width.toFloat())
 			}
+
 			ComponentTooltip.ArrowDirection.LEFT -> {
 				topLeft = calculateDynamicCorner(arrowOffset, 0f, height.toFloat())
 				bottomLeft = calculateDynamicCorner(height - arrowOffset, 0f, height.toFloat())
 			}
+
 			ComponentTooltip.ArrowDirection.RIGHT -> {
 				topRight = calculateDynamicCorner(arrowOffset, 0f, height.toFloat())
 				bottomRight = calculateDynamicCorner(height - arrowOffset, 0f, height.toFloat())
@@ -382,18 +457,21 @@ private class TooltipBackground(context: Context, containerColor: Int, private v
 				arrowPath.lineTo(cx + arrowW / 2, boxBottom)
 				arrowPath.lineTo(cx, height.toFloat())
 			}
+
 			ComponentTooltip.ArrowDirection.UP -> {
 				val cx = arrowOffset.coerceIn(arrowW, width - arrowW)
 				arrowPath.moveTo(cx - arrowW / 2, boxTop)
 				arrowPath.lineTo(cx + arrowW / 2, boxTop)
 				arrowPath.lineTo(cx, 0f)
 			}
+
 			ComponentTooltip.ArrowDirection.RIGHT -> {
 				val cy = arrowOffset.coerceIn(arrowW, height - arrowW)
 				arrowPath.moveTo(boxRight, cy - arrowW / 2)
 				arrowPath.lineTo(boxRight, cy + arrowW / 2)
 				arrowPath.lineTo(width.toFloat(), cy)
 			}
+
 			ComponentTooltip.ArrowDirection.LEFT -> {
 				val cy = arrowOffset.coerceIn(arrowW, height - arrowW)
 				arrowPath.moveTo(boxLeft, cy - arrowW / 2)
@@ -405,7 +483,11 @@ private class TooltipBackground(context: Context, containerColor: Int, private v
 		canvas.drawPath(arrowPath, bgPaint)
 	}
 
-	private fun calculateDynamicCorner(distanceToCorner: Float, minLimit: Float, maxLimit: Float): Float {
+	private fun calculateDynamicCorner(
+		distanceToCorner: Float,
+		minLimit: Float,
+		maxLimit: Float
+	): Float {
 		val threshold = maxCorner + arrowW
 
 		if (distanceToCorner >= threshold) {
@@ -432,7 +514,11 @@ private class PlainTooltipView(
 	private val bg = TooltipBackground(context, container, corner)
 	private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
 		color = onContainer
-		textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 12f, context.resources.displayMetrics)
+		textSize = TypedValue.applyDimension(
+			TypedValue.COMPLEX_UNIT_SP,
+			12f,
+			context.resources.displayMetrics
+		)
 		typeface = Typeface.DEFAULT
 	}
 	private val hPad = dp(context, 12f)
@@ -440,7 +526,8 @@ private class PlainTooltipView(
 
 	override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
 		val textWidth = textPaint.measureText(text.toString())
-		val isHorizontal = arrowDir == ComponentTooltip.ArrowDirection.LEFT || arrowDir == ComponentTooltip.ArrowDirection.RIGHT
+		val isHorizontal =
+			arrowDir == ComponentTooltip.ArrowDirection.LEFT || arrowDir == ComponentTooltip.ArrowDirection.RIGHT
 
 		val w = textWidth + hPad * 2 + if (isHorizontal) bg.arrowH else 0f
 		val fm = textPaint.fontMetrics
@@ -453,8 +540,10 @@ private class PlainTooltipView(
 		bg.draw(canvas, width, height, arrowDir, arrowOffset)
 		val boxLeft = if (arrowDir == ComponentTooltip.ArrowDirection.LEFT) bg.arrowH else 0f
 		val boxTop = if (arrowDir == ComponentTooltip.ArrowDirection.UP) bg.arrowH else 0f
-		val boxWidth = width - if (arrowDir == ComponentTooltip.ArrowDirection.LEFT || arrowDir == ComponentTooltip.ArrowDirection.RIGHT) bg.arrowH else 0f
-		val boxHeight = height - if (arrowDir == ComponentTooltip.ArrowDirection.UP || arrowDir == ComponentTooltip.ArrowDirection.DOWN) bg.arrowH else 0f
+		val boxWidth =
+			width - if (arrowDir == ComponentTooltip.ArrowDirection.LEFT || arrowDir == ComponentTooltip.ArrowDirection.RIGHT) bg.arrowH else 0f
+		val boxHeight =
+			height - if (arrowDir == ComponentTooltip.ArrowDirection.UP || arrowDir == ComponentTooltip.ArrowDirection.DOWN) bg.arrowH else 0f
 
 		val fm = textPaint.fontMetrics
 		val textY = boxTop + (boxHeight - (fm.descent - fm.ascent)) / 2 - fm.ascent
@@ -499,9 +588,11 @@ private class RichTooltipView(
 			contentLayout.addView(ImageView(context).apply {
 				setImageDrawable(icon)
 				setColorFilter(primary)
-				layoutParams = LinearLayout.LayoutParams(dp(context, 24f).toInt(), dp(context, 24f).toInt()).apply {
-					bottomMargin = dp(context, 8f).toInt()
-				}
+				layoutParams =
+					LinearLayout.LayoutParams(dp(context, 24f).toInt(), dp(context, 24f).toInt())
+						.apply {
+							bottomMargin = dp(context, 8f).toInt()
+						}
 			})
 		}
 
@@ -569,11 +660,28 @@ private class RichTooltipView(
 				bg.draw(canvas, width, height, arrowDir, arrowOffset)
 			}
 		}
-		addView(bgView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-		addView(contentLayout, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+		addView(
+			bgView,
+			FrameLayout.LayoutParams(
+				ViewGroup.LayoutParams.MATCH_PARENT,
+				ViewGroup.LayoutParams.MATCH_PARENT
+			)
+		)
+		addView(
+			contentLayout,
+			FrameLayout.LayoutParams(
+				ViewGroup.LayoutParams.WRAP_CONTENT,
+				ViewGroup.LayoutParams.WRAP_CONTENT
+			)
+		)
 	}
 
-	private fun makeButton(context: Context, text: CharSequence, color: Int, onClick: () -> Unit): TextView {
+	private fun makeButton(
+		context: Context,
+		text: CharSequence,
+		color: Int,
+		onClick: () -> Unit
+	): TextView {
 		return TextView(context).apply {
 			this.text = text
 			setTextColor(color)
@@ -587,7 +695,12 @@ private class RichTooltipView(
 			setPadding(padH, padV, padH, padV)
 
 			background = RippleDrawable(
-				ColorStateList.valueOf(MaterialColors.getColor(this, androidx.appcompat.R.attr.colorControlHighlight)),
+				ColorStateList.valueOf(
+					MaterialColors.getColor(
+						this,
+						androidx.appcompat.R.attr.colorControlHighlight
+					)
+				),
 				GradientDrawable().apply {
 					setColor(Color.TRANSPARENT)
 					cornerRadius = corner
@@ -606,16 +719,20 @@ private class RichTooltipView(
 			MeasureSpec.makeMeasureSpec(maxWidthPx, MeasureSpec.AT_MOST),
 			MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
 		)
-		val isHorizontal = arrowDir == ComponentTooltip.ArrowDirection.LEFT || arrowDir == ComponentTooltip.ArrowDirection.RIGHT
+		val isHorizontal =
+			arrowDir == ComponentTooltip.ArrowDirection.LEFT || arrowDir == ComponentTooltip.ArrowDirection.RIGHT
 
 		val w = contentLayout.measuredWidth + if (isHorizontal) bg.arrowH.toInt() else 0
 		val h = contentLayout.measuredHeight + if (!isHorizontal) bg.arrowH.toInt() else 0
 
 		(contentLayout.layoutParams as FrameLayout.LayoutParams).apply {
-			leftMargin = if (arrowDir == ComponentTooltip.ArrowDirection.LEFT) bg.arrowH.toInt() else 0
+			leftMargin =
+				if (arrowDir == ComponentTooltip.ArrowDirection.LEFT) bg.arrowH.toInt() else 0
 			topMargin = if (arrowDir == ComponentTooltip.ArrowDirection.UP) bg.arrowH.toInt() else 0
-			rightMargin = if (arrowDir == ComponentTooltip.ArrowDirection.RIGHT) bg.arrowH.toInt() else 0
-			bottomMargin = if (arrowDir == ComponentTooltip.ArrowDirection.DOWN) bg.arrowH.toInt() else 0
+			rightMargin =
+				if (arrowDir == ComponentTooltip.ArrowDirection.RIGHT) bg.arrowH.toInt() else 0
+			bottomMargin =
+				if (arrowDir == ComponentTooltip.ArrowDirection.DOWN) bg.arrowH.toInt() else 0
 		}
 
 		super.onMeasure(

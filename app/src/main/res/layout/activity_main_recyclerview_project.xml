@@ -1,106 +1,156 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
-	xmlns:tools="http://schemas.android.com/tools"
-	android:background="@drawable/bg_project_single"
+	android:id="@+id/cardProject"
 	android:layout_width="match_parent"
-	android:layout_height="75dp">
+	android:layout_height="wrap_content"
+	android:layout_marginVertical="2dp"
+	app:cardBackgroundColor="?attr/colorSurfaceContainer"
+	app:cardCornerRadius="14dp"
+	app:cardElevation="0dp"
+	app:strokeWidth="0dp">
 
-	<com.deavidig.mod.deanielig.divider.widget.AppCompatComponentMaterialDivider
-		android:id="@+id/top_project"
-		android:layout_width="0dp"
-		android:layout_height="2dp"
-		android:background="?attr/colorSurfaceContainerHigh"
-		android:visibility="invisible"
-		app:dividerInsetEnd="20dp"
-		app:dividerInsetStart="20dp"
-		app:dividerRadiusTopLeftSize="8dp"
-		app:dividerRadiusTopRightSize="8dp"
-		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintStart_toStartOf="parent" />
-
-	<com.google.android.material.imageview.ShapeableImageView
-		android:id="@+id/project_icon"
-		android:layout_width="50dp"
-		android:layout_height="50dp"
-		android:layout_marginStart="8dp"
-		android:background="@drawable/ef_gradient_bottomtop_dark"
-		app:shapeAppearance="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintStart_toStartOf="parent"
-		app:layout_constraintTop_toTopOf="parent"
-		app:layout_constraintVertical_bias="0.48" />
-
-	<TextView
-		android:id="@+id/description_project"
-		style="@style/TextAppearance.Material3.BodyMedium"
-		android:layout_width="wrap_content"
+	<androidx.constraintlayout.widget.ConstraintLayout
+		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:layout_marginStart="8dp"
-		android:layout_marginBottom="16dp"
-		android:text="This is a description of the project"
-		android:textColor="#808080"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintStart_toEndOf="@+id/project_icon" />
+		android:padding="12dp"
+		android:clipToPadding="false">
 
-	<TextView
-		style="@style/TextAppearance.Material3.TitleLarge.Emphasized"
-		android:id="@+id/title_project"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_marginStart="8dp"
-		android:text="Title of the Project"
-		android:textColor="#202020"
-		app:layout_constraintBottom_toTopOf="@+id/description_project"
-		app:layout_constraintStart_toEndOf="@+id/project_icon"
-		app:layout_constraintTop_toTopOf="parent"
-		app:layout_constraintVertical_bias="0.923" />
+		<com.google.android.material.imageview.ShapeableImageView
+			android:id="@+id/project_icon"
+			android:layout_width="45dp"
+			android:layout_height="45dp"
+			android:layout_marginStart="15dp"
+			android:foreground="@drawable/ef_gradient_bottomtop_dark"
+			android:rotation="13.75"
+			android:visibility="gone"
+			app:layout_constraintBottom_toBottomOf="@+id/application_icon"
+			app:layout_constraintEnd_toEndOf="@+id/application_icon"
+			app:layout_constraintStart_toStartOf="@+id/application_icon"
+			app:layout_constraintTop_toTopOf="@+id/application_icon"
+			app:shapeAppearance="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded" />
 
-	<TextView
-		android:id="@+id/id_project"
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:layout_marginBottom="2dp"
-		android:text="600"
-		android:textColor="#FAFAFA"
-		app:layout_constraintBottom_toBottomOf="@+id/project_icon"
-		app:layout_constraintEnd_toEndOf="@+id/project_icon"
-		app:layout_constraintStart_toStartOf="@+id/project_icon" />
+		<com.google.android.material.imageview.ShapeableImageView
+			android:id="@+id/application_icon"
+			android:layout_width="45dp"
+			android:layout_height="45dp"
+			android:foreground="@drawable/ef_gradient_bottomtop_dark"
+			android:src="@mipmap/ic_launcher"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toTopOf="parent"
+			app:shapeAppearance="@style/Widget.ComponentMaterial3.ShapeableImageView.Rounded" />
 
-	<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
-		android:layout_width="2dp"
-		android:layout_height="35dp"
-		android:layout_marginEnd="7.5dp"
-		android:background="?attr/colorSurfaceContainerHighest"
-		app:dividerRadiusSize="8dp"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintEnd_toStartOf="@+id/options_project"
-		app:layout_constraintTop_toTopOf="parent" />
+		<TextView
+			android:id="@+id/id_project"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginBottom="2dp"
+			android:text="600"
+			android:textColor="?android:attr/textColorPrimaryInverse"
+			app:layout_constraintBottom_toBottomOf="@+id/application_icon"
+			app:layout_constraintEnd_toEndOf="@+id/application_icon"
+			app:layout_constraintStart_toStartOf="@+id/application_icon" />
 
-	<androidx.constraintlayout.utils.widget.ImageFilterButton
-		android:id="@+id/options_project"
-		android:layout_width="25dp"
-		android:layout_height="25dp"
-		android:layout_marginEnd="8dp"
-		android:background="@android:color/transparent"
-		android:src="@drawable/ic_arrow_forward_ios_24"
-		android:tint="?attr/colorSurfaceContainerHighest"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintTop_toTopOf="parent" />
+		<TextView
+			android:id="@+id/application_title"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="18dp"
+			android:textColor="?android:attr/textColorPrimary"
+			android:textSize="19sp"
+			android:textStyle="bold"
+			app:layout_constraintStart_toEndOf="@id/application_icon"
+			app:layout_constraintTop_toTopOf="@id/application_icon" />
 
-	<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
-		android:id="@+id/bottom_project"
-		android:layout_width="0dp"
-		android:layout_height="2dp"
-		android:background="?attr/colorSurfaceContainerHigh"
-		android:visibility="invisible"
-		app:dividerInsetEnd="20dp"
-		app:dividerInsetStart="20dp"
-		app:dividerRadiusBottomLeftSize="8dp"
-		app:dividerRadiusBottomRightSize="8dp"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintStart_toStartOf="parent" />
+		<TextView
+			android:id="@+id/badge_module"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:background="@drawable/badge_bg"
+			android:paddingHorizontal="10dp"
+			android:paddingBottom="2dp"
+			android:layout_marginStart="5dp"
+			android:textStyle="bold"
+			android:text=":app"
+			app:layout_constraintBottom_toBottomOf="@+id/application_title"
+			app:layout_constraintStart_toEndOf="@id/application_title"
+			app:layout_constraintTop_toTopOf="@+id/application_title" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+		<TextView
+			android:id="@+id/badge_language"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:background="@drawable/badge_bg"
+			android:paddingHorizontal="10dp"
+			android:paddingBottom="2dp"
+			android:layout_marginStart="5dp"
+			android:textStyle="bold"
+			app:layout_constraintBottom_toBottomOf="@+id/badge_module"
+			app:layout_constraintStart_toEndOf="@id/badge_module"
+			app:layout_constraintTop_toTopOf="@+id/badge_module" />
+
+		<TextView
+			android:id="@+id/badge_extra"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="5dp"
+			android:background="@drawable/badge_bg"
+			android:paddingHorizontal="16dp"
+			android:paddingBottom="2dp"
+			android:text="+"
+			android:textStyle="bold"
+			android:visibility="gone"
+			app:layout_constraintBottom_toBottomOf="@+id/badge_language"
+			app:layout_constraintEnd_toStartOf="@+id/options_more"
+			app:layout_constraintStart_toEndOf="@id/badge_language"
+			app:layout_constraintTop_toTopOf="@+id/badge_language" />
+
+		<TextView
+			android:id="@+id/application_package"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="2dp"
+			android:textColor="#777777"
+			android:textSize="12sp"
+			app:layout_constraintEnd_toStartOf="@id/options_more"
+			app:layout_constraintStart_toStartOf="@id/application_title"
+			app:layout_constraintTop_toBottomOf="@id/application_title" />
+
+		<ImageButton
+			android:id="@+id/options_more"
+			android:layout_width="32dp"
+			android:layout_height="32dp"
+			android:background="?attr/selectableItemBackgroundBorderless"
+			android:src="@drawable/ic_more_vert_24"
+			app:layout_constraintBottom_toBottomOf="@id/application_icon"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintTop_toTopOf="@id/application_icon" />
+
+		<com.deavidig.mod.deanielig.divider.widget.ComponentMaterialDivider
+			android:id="@+id/project_divider"
+			android:layout_width="0dp"
+			android:layout_height="1dp"
+			android:layout_marginTop="10dp"
+			android:visibility="gone"
+			app:dividerColor="?attr/colorSurfaceContainerHighest"
+			app:dividerRadiusSize="16dp"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/application_icon" />
+
+		<TextView
+			android:id="@+id/project_description"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="5dp"
+			android:lineSpacingExtra="2dp"
+			android:textColor="?android:attr/textColorPrimary"
+			android:textSize="12sp"
+			android:visibility="gone"
+			app:layout_constraintEnd_toEndOf="parent"
+			app:layout_constraintStart_toStartOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/project_divider" />
+
+	</androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>
