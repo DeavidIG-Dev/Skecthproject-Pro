@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto">
-	<item android:id="@+id/menu_add" android:icon="@drawable/ic_home_24" app:showAsAction="always" />
-	<item android:id="@+id/menu_options" android:icon="@drawable/ic_gradle_32" app:showAsAction="always" />
+	<item android:id="@+id/menu_add" android:title="Home" android:icon="@drawable/ic_home_24" app:showAsAction="always" />
+	<item android:id="@+id/menu_options" android:title="Gradle" android:icon="@drawable/ic_gradle_32" app:showAsAction="always" />
 </menu>

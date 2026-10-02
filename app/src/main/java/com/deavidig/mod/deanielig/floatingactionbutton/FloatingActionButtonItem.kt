@@ -5,14 +5,14 @@ import android.util.AttributeSet
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 
 /**
- * A single item of a [FloatingActionButtonMenu].
+ * A single item of a [FloatingActionButtonGroup].
  *
  * Deliberately has no custom API of its own — it inherits the full XML attribute surface
  * of [ExtendedFloatingActionButton] as-is (`app:icon`, `android:text`, `app:iconTint`,
  * `app:backgroundTint`, `android:textColor`, `app:cornerRadius`, `app:elevation`, motion
  * specs, etc.). Selected appearance ("state_selected") is handled through `ColorStateList`
  * resources passed to `iconTint`/`backgroundTint`/`textColor` — no separate "Selected"
- * properties are needed, since [FloatingActionButtonMenu] flips [isSelected] on the item
+ * properties are needed, since [FloatingActionButtonGroup] flips [isSelected] on the item
  * directly and the state list resolves the right color automatically.
  *
  * @constructor Creates a new [FloatingActionButtonItem].

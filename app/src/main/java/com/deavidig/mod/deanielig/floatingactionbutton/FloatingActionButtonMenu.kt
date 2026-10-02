@@ -4,1281 +4,868 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Outline
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.RippleDrawable
 import android.os.Parcel
 import android.os.Parcelable
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.TextPaint
+import android.text.TextUtils
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
 import android.util.AttributeSet
-import android.view.GestureDetector
-import android.view.MotionEvent
+import android.util.TypedValue
+import android.view.Gravity
+import android.view.MenuInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewParent
-import android.view.accessibility.AccessibilityNodeInfo
-import android.view.animation.DecelerateInterpolator
-import androidx.coordinatorlayout.widget.CoordinatorLayout
+import android.view.ViewOutlineProvider
+import android.view.animation.PathInterpolator
+import android.widget.Button
+import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.PopupMenu
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcher
+import androidx.annotation.AttrRes
+import androidx.annotation.ColorInt
+import androidx.annotation.DrawableRes
+import androidx.annotation.MenuRes
+import androidx.annotation.StringRes
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
-import androidx.core.view.ViewCompat
 import com.deavidig.sketchprojectpro.R
 import com.google.android.material.color.MaterialColors
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+import androidx.appcompat.R as AndroidXR
+import com.google.android.material.R as MaterialR
 
+// =================================================================================================
+// Menu wrapper
+// =================================================================================================
+
+/**
+ * Wrapper that owns the items of a [FloatingActionButtonMenu].
+ *
+ * A [FloatingActionMenuItem] cannot be instantiated directly: it is always created through a [FloatingActionMenu]
+ * (`menu.add(...)` or `menu.inflate(...)`), the same way `android.view.Menu.add` returns a
+ * `MenuItem`. Obtain the instance with [FloatingActionButtonMenu.getMenu].
+ *
+ * Items are listed top to bottom in the order they are added.
+ */
+class FloatingActionMenu internal constructor(private val context: Context) {
+
+	internal interface Callback {
+		/** Items were added, removed, cleared or shown/hidden. */
+		fun onStructureChanged()
+
+		/** A property of a single item changed. */
+		fun onItemChanged(item: FloatingActionMenuItem)
+	}
+
+	internal var callback: Callback? = null
+	private val items = ArrayList<FloatingActionMenuItem>()
+
+	/** Creates and appends an item with an optional [icon] and [helpText]. */
+	fun add(
+		id: Int,
+		label: CharSequence,
+		icon: Drawable? = null,
+		helpText: CharSequence? = null
+	): FloatingActionMenuItem {
+		val item = createItem(id, label, icon, helpText, enabled = true, visible = true)
+		callback?.onStructureChanged()
+		return item
+	}
+
+	/** Same as above, resolving [iconRes] (0 = no icon). */
+	fun add(
+		id: Int,
+		label: CharSequence,
+		@DrawableRes iconRes: Int,
+		helpText: CharSequence? = null
+	): FloatingActionMenuItem {
+		val icon = if (iconRes != 0) ContextCompat.getDrawable(context, iconRes) else null
+		return add(id, label, icon, helpText)
+	}
+
+	/**
+	 * Appends the items declared in a menu resource.
+	 * `title` → label, `icon` → icon, `titleCondensed` → help text (when different from the title).
+	 */
+	fun inflate(@MenuRes menuRes: Int) {
+		val platformMenu = PopupMenu(context, View(context)).menu
+		MenuInflater(context).inflate(menuRes, platformMenu)
+		for (i in 0 until platformMenu.size()) {
+			val mi = platformMenu.getItem(i)
+			val condensed = mi.titleCondensed
+			val help = if (condensed != null && condensed.toString() != mi.title?.toString()) {
+				condensed
+			} else {
+				null
+			}
+			createItem(mi.itemId, mi.title ?: "", mi.icon, help, mi.isEnabled, mi.isVisible)
+		}
+		callback?.onStructureChanged()
+	}
+
+	/** Returns the first item with the given [id], or `null`. */
+	fun findItem(id: Int): FloatingActionMenuItem? = items.firstOrNull { it.getId() == id }
+
+	fun getItem(index: Int): FloatingActionMenuItem = items[index]
+
+	fun indexOf(item: FloatingActionMenuItem): Int = items.indexOf(item)
+
+	fun size(): Int = items.size
+
+	/** Read-only snapshot of the items, top to bottom. */
+	fun getItems(): List<FloatingActionMenuItem> = items.toList()
+
+	fun remove(id: Int) {
+		if (items.removeAll { it.getId() == id }) callback?.onStructureChanged()
+	}
+
+	fun remove(item: FloatingActionMenuItem) {
+		if (items.remove(item)) callback?.onStructureChanged()
+	}
+
+	fun clear() {
+		if (items.isEmpty()) return
+		items.clear()
+		callback?.onStructureChanged()
+	}
+
+	private fun createItem(
+		id: Int,
+		label: CharSequence,
+		icon: Drawable?,
+		helpText: CharSequence?,
+		enabled: Boolean,
+		visible: Boolean
+	): FloatingActionMenuItem {
+		val item = FloatingActionMenuItem(this, id, label, icon, helpText, enabled, visible)
+		items.add(item)
+		return item
+	}
+
+	internal fun notifyItemChanged(item: FloatingActionMenuItem) {
+		callback?.onItemChanged(item)
+	}
+
+	internal fun notifyStructureChanged() {
+		callback?.onStructureChanged()
+	}
+}
+
+/**
+ * One action of a [FloatingActionMenu], rendered as an `ExtendedFloatingActionButton` with an icon, a text
+ * label and an optional secondary *help text* line explaining the action.
+ *
+ * Instances are created only through [FloatingActionMenu]; every setter updates the visible button.
+ */
+class FloatingActionMenuItem internal constructor(
+	private val menu: FloatingActionMenu,
+	private val id: Int,
+	label: CharSequence,
+	icon: Drawable?,
+	helpText: CharSequence?,
+	enabled: Boolean,
+	visible: Boolean
+) {
+
+	/** Click listener of a single item. */
+	fun interface OnClickListener {
+		fun onClick(item: FloatingActionMenuItem)
+	}
+
+	private var label: CharSequence = label
+	private var icon: Drawable? = icon
+	private var helpText: CharSequence? = helpText
+	private var contentDescription: CharSequence? = null
+	private var enabled: Boolean = enabled
+	private var visible: Boolean = visible
+	private var clickListener: OnClickListener? = null
+
+	private var button: ExtendedFloatingActionButton? = null
+
+	fun getId(): Int = id
+
+	/**
+	 * The [ExtendedFloatingActionButton] currently rendering this item, so it can be manipulated
+	 * directly (animations, `extend()`/`shrink()`, extra styling, etc.).
+	 *
+	 * It is `null` while the item is hidden, removed, or the menu has not been built yet, and it is
+	 * a **new instance every time the menu is rebuilt** (items added/removed/shown/hidden, or
+	 * `setItemColors`), so do not keep a reference to it.
+	 *
+	 * Changing a property through this item's setters re-binds text, icon, colors and
+	 * content description, overwriting manual changes to those. Do not replace the button's
+	 * `OnClickListener`: the menu uses it to dispatch clicks and collapse; use
+	 * [FloatingActionButtonMenu.setOnItemMenuClickListener] or [setOnClickListener] instead.
+	 */
+	fun getButton(): ExtendedFloatingActionButton? = button
+
+	internal fun attachButton(value: ExtendedFloatingActionButton?) {
+		button = value
+	}
+
+	fun getLabel(): CharSequence = label
+
+	fun setLabel(value: CharSequence) {
+		label = value
+		menu.notifyItemChanged(this)
+	}
+
+	fun getIcon(): Drawable? = icon
+
+	fun setIcon(value: Drawable?) {
+		icon = value
+		menu.notifyItemChanged(this)
+	}
+
+	fun getHelpText(): CharSequence? = helpText
+
+	fun setHelpText(value: CharSequence?) {
+		helpText = value
+		menu.notifyItemChanged(this)
+	}
+
+	fun getContentDescription(): CharSequence? = contentDescription
+
+	fun setContentDescription(value: CharSequence?) {
+		contentDescription = value
+		menu.notifyItemChanged(this)
+	}
+
+	fun isEnabled(): Boolean = enabled
+
+	fun setEnabled(value: Boolean) {
+		if (enabled == value) return
+		enabled = value
+		menu.notifyItemChanged(this)
+	}
+
+	fun isVisible(): Boolean = visible
+
+	fun setVisible(value: Boolean) {
+		if (visible == value) return
+		visible = value
+		menu.notifyStructureChanged()
+	}
+
+	fun setOnClickListener(listener: OnClickListener?) {
+		clickListener = listener
+	}
+
+	internal fun dispatchClick() {
+		clickListener?.onClick(this)
+	}
+}
+
+// =================================================================================================
+// Component
+// =================================================================================================
+
+/**
+ * Material Design 3 **FloatingActionButtonMenu** for Android Views (equivalent of the Compose
+ * `FloatingActionButtonMenu` + `ToggleFloatingActionButton` + `FloatingActionButtonMenuItem`).
+ *
+ * A toggle FAB opens a vertical list of actions. Every action is a real
+ * [ExtendedFloatingActionButton] showing an icon and a text label, plus an optional help text line.
+ * Items are created through the [FloatingActionMenu] wrapper returned by [getMenu].
+ *
+ * ### Behavior
+ * - The toggle morphs `+` → `×`, its container goes from `colorPrimaryContainer` to `colorPrimary`
+ *   and its shape from rounded square to circle.
+ * - With `android:text` (or [setText]) the toggle is an extended FAB with a label; the label fades
+ *   out and the button shrinks to a circle when the menu expands.
+ * - Items appear staggered, starting with the one closest to the toggle, and disappear in reverse.
+ * - An optional scrim dims the content behind; tapping it collapses the menu.
+ * - System back collapses the menu while expanded (requires a `ComponentActivity` host).
+ * - The expanded state survives configuration changes (the view needs an `android:id`).
+ *
+ * ### Usage
+ * Place it as the **last** child of a `FrameLayout` / `CoordinatorLayout` with `match_parent`
+ * size so the scrim can cover the screen. While collapsed, touches outside the toggle pass through.
+ *
+ * ```xml
+ * <com.deavidig.mod.deaniel.fabmenu.ComponentFabMenu
+ *     android:id="@+id/fabMenu"
+ *     android:layout_width="match_parent"
+ *     android:layout_height="match_parent"
+ *     app:fabMenu="@menu/fab_menu"
+ *     app:fabMenuAlignment="end"
+ *     android:text="Actions" />
+ * ```
+ *
+ * ```kotlin
+ * val menu = fabMenu.getMenu()
+ * val share = menu.add(R.id.action_share, "Share", R.drawable.ic_share, "Send a link to someone")
+ * share.setOnClickListener { /* ... */ }
+ * share.setEnabled(false)
+ *
+ * fabMenu.setOnItemMenuClickListener { item ->
+ *     item.getButton()?.let { /* manipulate the ExtendedFloatingActionButton */ }
+ * }
+ * ```
+ */
 class FloatingActionButtonMenu @JvmOverloads constructor(
 	context: Context,
 	attrs: AttributeSet? = null,
 	defStyleAttr: Int = 0
-) : ViewGroup(context, attrs, defStyleAttr), CoordinatorLayout.AttachedBehavior {
-
-	enum class IconSide { START, END }
-	enum class ActivationMode { CLICK, LONG_CLICK }
-	enum class MenuOrientation { TOP, BOTTOM, LEFT, RIGHT, AUTO }
-
-	private val items = mutableListOf<FloatingActionButtonItem>()
-	private var scrimView: View? = null
-
-	private val itemAnimationDuration = 220L
-	private val itemStaggerDelay = 40L
-	private val interpolator = DecelerateInterpolator()
-
-	private val density: Float = resources.displayMetrics.density
-	private val itemSpacingPx: Int = (12 * density).toInt()
-
-	private inline val Int.dp: Float get() = this * density
-	private inline val Float.dp: Float get() = this * density
-
-	// Especificaciones M3
-	private val triggerHeightPx: Float = 56f.dp
-	private val triggerIconSizePx: Float = 24f.dp
-	private val triggerPaddingStartPx: Float = 16f.dp
-	private val triggerIconTextGapPx: Float = 12f.dp
-	private val triggerPaddingEndPx: Float = 16f.dp
-
-	// Margen extra para evitar cortar la sombra
-	private val shadowPaddingPx: Int = (12 * density).toInt()
-
-	// Elevación dinámica M3: reposo, presionado, hover y arrastrado
-	private val restingElevationPx: Float = 6f.dp
-	private val pressedElevationPx: Float = 6f.dp
-	private val hoverElevationPx: Float = 8f.dp
-	private val draggedElevationPx: Float = 12f.dp
-	private val elevationAnimationDuration = 120L
-
-	private var isPressedState = false
-	private var isHoveredState = false
-	private var isDraggedState = false
-	private var elevationAnimator: ValueAnimator? = null
-
-	private var customClickListener: OnClickListener? = null
-	private var customLongClickListener: OnLongClickListener? = null
-
-	override fun setOnClickListener(l: OnClickListener?) {
-		customClickListener = l
-	}
-
-	override fun setOnLongClickListener(l: OnLongClickListener?) {
-		customLongClickListener = l
-	}
-
-	private var iconSideValue: IconSide = IconSide.START
-	fun getIconSide(): IconSide = iconSideValue
-	fun setIconSide(side: IconSide): FloatingActionButtonMenu {
-		iconSideValue = side
-		recomputeTriggerExpandedWidth()
-		if (triggerExtended) layoutTriggerRect()
-		invalidate()
-		return this
-	}
-
-	private var triggerCornerRadiusValue: Float = 16f.dp
-
-	// Radio de esquina explícito para el estado contraído (icono solo). Si es null, se usa el radio base.
-	private var shrunkCornerRadiusValue: Float? = null
-	fun getShrunkCornerRadius(): Float? = shrunkCornerRadiusValue
-	fun setShrunkCornerRadius(radiusPx: Float?): FloatingActionButtonMenu {
-		shrunkCornerRadiusValue = radiusPx
-		invalidate()
-		return this
-	}
-
-	// Radio de esquina explícito para el estado extendido (icono + texto). Si es null, se usa el radio base.
-	private var extendCornerRadiusValue: Float? = null
-	fun getExtendCornerRadius(): Float? = extendCornerRadiusValue
-	fun setExtendCornerRadius(radiusPx: Float?): FloatingActionButtonMenu {
-		extendCornerRadiusValue = radiusPx
-		invalidate()
-		return this
-	}
+) : FrameLayout(context, attrs, defStyleAttr) {
 
 	/**
-	 * Si se definió shrunkCornerRadius y/o extendCornerRadius, el radio se interpola junto con
-	 * triggerWidthFraction (la misma fracción que anima el ancho contraído/extendido), para que
-	 * la forma cambie en sincronía con el ancho. Si ninguno de los dos se definió, se conserva el
-	 * comportamiento previo de un único radio constante (o circular si triggerCornerRadiusValue < 0).
+	 * Receives clicks on any menu item. Use [FloatingActionMenuItem.getButton] to manipulate its
+	 * `ExtendedFloatingActionButton` and [FloatingActionMenu.indexOf] if you need its position.
 	 */
-	private val resolvedTriggerCornerRadius: Float
-		get() {
-			val baseRadius =
-				if (triggerCornerRadiusValue >= 0f) triggerCornerRadiusValue else triggerHeightPx / 2f
-			if (shrunkCornerRadiusValue == null && extendCornerRadiusValue == null) return baseRadius
-			val shrunkRadius = shrunkCornerRadiusValue ?: baseRadius
-			val extendRadius = extendCornerRadiusValue ?: baseRadius
-			return shrunkRadius + (extendRadius - shrunkRadius) * triggerWidthFraction
-		}
-
-	fun getTriggerCornerRadius(): Float = triggerCornerRadiusValue
-	fun setTriggerCornerRadius(radiusPx: Float): FloatingActionButtonMenu {
-		triggerCornerRadiusValue = radiusPx
-		invalidate()
-		return this
+	fun interface OnItemMenuClickListener {
+		fun onItemMenuClick(item: FloatingActionMenuItem)
 	}
 
-	private var triggerBackgroundTintValue: ColorStateList = ColorStateList.valueOf(
-		MaterialColors.getColor(
-			this,
-			com.google.android.material.R.attr.colorPrimaryContainer,
-			Color.DKGRAY
-		)
-	)
-
-	fun getTriggerBackgroundTint(): ColorStateList = triggerBackgroundTintValue
-	fun setTriggerBackgroundTint(tint: ColorStateList): FloatingActionButtonMenu {
-		triggerBackgroundTintValue = tint
-		invalidate()
-		return this
+	/** Receives expand/collapse changes. */
+	fun interface OnExpandedChangeListener {
+		fun onExpandedChange(expanded: Boolean)
 	}
 
-	// Tinte de fondo mientras el menú está abierto. Si no se define, se usa triggerBackgroundTintValue.
-	private var triggerBackgroundTintVisibleValue: ColorStateList? = null
-	fun getTriggerBackgroundTintVisible(): ColorStateList? = triggerBackgroundTintVisibleValue
-	fun setTriggerBackgroundTintVisible(tint: ColorStateList?): FloatingActionButtonMenu {
-		triggerBackgroundTintVisibleValue = tint
-		invalidate()
-		return this
+	/** Side of the container where the toggle (and the items) are anchored. Honors RTL. */
+	enum class Alignment { START, END }
+
+	/** Built-in glyph of the collapsed toggle; every glyph morphs into an `×` when expanded. */
+	enum class ToggleGlyph {
+		/** `+` that rotates into `×`. */
+		PLUS,
+
+		/** Three vertical dots (`more_vert`) that split and merge into `×`. */
+		MORE_VERT
 	}
 
-	private val resolvedTriggerBackgroundTint: ColorStateList
-		get() = (if (menuOpen) triggerBackgroundTintVisibleValue else null)
-			?: triggerBackgroundTintValue
+	// ---------------------------------------------------------------------------------------------
+	// State (everything private; public API through getters/setters)
+	// ---------------------------------------------------------------------------------------------
 
-	private var triggerIconTintValue: ColorStateList = ColorStateList.valueOf(
-		MaterialColors.getColor(
-			this,
-			com.google.android.material.R.attr.colorOnPrimaryContainer,
-			Color.WHITE
-		)
-	)
+	private val density = context.resources.displayMetrics.density
+	private val menu = FloatingActionMenu(context)
+	private var expanded = false
+	private var progress = 0f
+	private var animator: ValueAnimator? = null
+	private var alignment = Alignment.END
+	private var scrimEnabled = true
+	private var collapseOnItemClick = true
+	private var edgeMarginPx = 16f * density
+	private var toggleIcon: Drawable? = null
+	private var toggleGlyph = ToggleGlyph.PLUS
+	private var openDescription: CharSequence = "Open menu"
+	private var closeDescription: CharSequence = "Close menu"
+	private var descriptionsCustomized = false
+	private var toggleText: CharSequence? = null
+	private var itemMenuClickListener: OnItemMenuClickListener? = null
+	private var expandedListener: OnExpandedChangeListener? = null
+	private var backDispatcher: OnBackPressedDispatcher? = null
 
-	fun getTriggerIconTint(): ColorStateList = triggerIconTintValue
-	fun setTriggerIconTint(tint: ColorStateList): FloatingActionButtonMenu {
-		triggerIconTintValue = tint
-		// Actualizar dinámicamente el ripple M3 según el nuevo tinte
-		updateM3RippleColor()
-		invalidate()
-		return this
-	}
+	@ColorInt
+	private var scrimColor =
+		ColorUtils.setAlphaComponent(themeColor(MaterialR.attr.colorSurface, Color.WHITE), 0xCC)
 
-	private var textColorValue: Int = MaterialColors.getColor(
-		this, com.google.android.material.R.attr.colorOnPrimaryContainer, Color.WHITE
-	)
+	@ColorInt
+	private var toggleCollapsedContainer =
+		themeColor(MaterialR.attr.colorPrimaryContainer, 0xFFEADDFF.toInt())
 
-	fun getTriggerTextColor(): Int = textColorValue
-	fun setTextColor(color: Int): FloatingActionButtonMenu {
-		textColorValue = color
-		textPaint.color = color
-		invalidate()
-		return this
-	}
+	@ColorInt
+	private var toggleCollapsedContent =
+		themeColor(MaterialR.attr.colorOnPrimaryContainer, 0xFF21005D.toInt())
 
-	// Color de texto mientras el menú está abierto. Si no se define, se usa textColorValue.
-	private var textColorVisibleValue: Int? = null
-	fun getTriggerTextColorVisible(): Int? = textColorVisibleValue
-	fun setTextColorVisible(color: Int?): FloatingActionButtonMenu {
-		textColorVisibleValue = color
-		invalidate()
-		return this
-	}
+	@ColorInt
+	private var toggleExpandedContainer =
+		themeColor(AndroidXR.attr.colorPrimary, 0xFF6750A4.toInt())
 
-	private val resolvedTextColor: Int
-		get() = (if (menuOpen) textColorVisibleValue else null) ?: textColorValue
+	@ColorInt
+	private var toggleExpandedContent =
+		themeColor(MaterialR.attr.colorOnPrimary, Color.WHITE)
 
-	// M3 Ripple: colorOnPrimaryContainer al 12% de alpha (0.12f)
-	private var triggerRippleColorValue: Int = ColorUtils.setAlphaComponent(
-		MaterialColors.getColor(
-			this,
-			com.google.android.material.R.attr.colorOnPrimaryContainer,
-			Color.WHITE
-		),
-		(255 * 0.12f).toInt()
-	)
+	@ColorInt
+	private var itemContainerColor =
+		themeColor(MaterialR.attr.colorPrimaryContainer, 0xFFEADDFF.toInt())
 
-	fun getTriggerRippleColor(): Int = triggerRippleColorValue
-	fun setTriggerColor(color: Int): FloatingActionButtonMenu {
-		triggerRippleColorValue = color
-		invalidate()
-		return this
-	}
+	@ColorInt
+	private var itemContentColor =
+		themeColor(MaterialR.attr.colorOnPrimaryContainer, 0xFF21005D.toInt())
 
-	// Color de ripple explícito para el estado contraído (icono solo).
-	private var shrunkRippleColorValue: Int? = null
-	fun getShrunkRippleColor(): Int? = shrunkRippleColorValue
-	fun setShrunkRippleColor(color: Int?): FloatingActionButtonMenu {
-		shrunkRippleColorValue = color
-		invalidate()
-		return this
-	}
+	@ColorInt
+	private var disabledOnSurface =
+		themeColor(MaterialR.attr.colorOnSurface, Color.BLACK)
 
-	// Color de ripple explícito para el estado extendido (icono + texto).
-	private var extendRippleColorValue: Int? = null
-	fun getExtendRippleColor(): Int? = extendRippleColorValue
-	fun setExtendRippleColor(color: Int?): FloatingActionButtonMenu {
-		extendRippleColorValue = color
-		invalidate()
-		return this
-	}
+	private val easing = PathInterpolator(0.2f, 0f, 0f, 1f)
+	private val scrimView = View(context)
+	private val itemsContainer = LinearLayout(context)
+	private val toggleButton = ToggleButtonView(context, density)
 
-	/** Prioriza el override de ripple del estado actual (contraído/extendido); si no hay, usa el color base. */
-	private val resolvedTriggerRippleColor: Int
-		get() = (if (triggerExtended) extendRippleColorValue else shrunkRippleColorValue)
-			?: triggerRippleColorValue
-
-	private fun updateM3RippleColor() {
-		val onColor =
-			triggerIconTintValue.getColorForState(drawableState, triggerIconTintValue.defaultColor)
-		triggerRippleColorValue = ColorUtils.setAlphaComponent(onColor, (255 * 0.12f).toInt())
-	}
-
-	/** Devuelve la elevación objetivo según la prioridad de estados M3: arrastrado > presionado > hover > reposo. */
-	private fun resolveTargetElevation(): Float = when {
-		isDraggedState -> draggedElevationPx
-		isPressedState -> pressedElevationPx
-		isHoveredState -> hoverElevationPx
-		else -> restingElevationPx
-	}
-
-	private fun updateElevationState(animate: Boolean = true) {
-		val target = resolveTargetElevation()
-		elevationAnimator?.cancel()
-		if (!animate) {
-			elevation = target
-			return
-		}
-		elevationAnimator = ValueAnimator.ofFloat(elevation, target).apply {
-			duration = elevationAnimationDuration
-			interpolator = this@FloatingActionButtonMenu.interpolator
-			addUpdateListener { elevation = it.animatedValue as Float }
-			start()
+	private val backCallback = object : OnBackPressedCallback(false) {
+		override fun handleOnBackPressed() {
+			collapse()
 		}
 	}
-
-	/**
-	 * Permite marcar el trigger como "arrastrado" (por ejemplo, desde un listener de
-	 * drag-and-drop externo), elevándolo por encima del resto de los estados M3.
-	 */
-	fun setDragged(dragged: Boolean): FloatingActionButtonMenu {
-		if (isDraggedState == dragged) return this
-		isDraggedState = dragged
-		updateElevationState()
-		return this
-	}
-
-	fun isDragged(): Boolean = isDraggedState
-
-	override fun onHoverEvent(event: MotionEvent): Boolean {
-		when (event.actionMasked) {
-			MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> {
-				val overTrigger = triggerRect.contains(event.x, event.y)
-				if (overTrigger != isHoveredState) {
-					isHoveredState = overTrigger
-					updateElevationState()
-				}
-			}
-
-			MotionEvent.ACTION_HOVER_EXIT -> {
-				if (isHoveredState) {
-					isHoveredState = false
-					updateElevationState()
-				}
-			}
-		}
-		return super.onHoverEvent(event)
-	}
-
-	private val triggerFillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-	private val triggerRipplePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-	private val triggerShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-	private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-		textSize = 14f.dp
-		color = textColorValue
-	}
-
-	private val triggerPillPath = Path()
-	private val triggerRect = RectF()
-
-	private var currentTriggerIcon: Drawable? = null
-	private var currentTriggerText: CharSequence? = null
-
-	private var triggerExpandedWidthPx: Float = triggerHeightPx
-	private var triggerSlotLeft = 0
-	private var triggerSlotTop = 0
-	private var triggerWidthFraction = 1f
-	private var triggerExtended: Boolean = true
-
-	private var wasExtendedBeforeMenuOpen: Boolean = true
-
-	fun isTriggerExtended(): Boolean = triggerExtended
-
-	private var triggerMotionAnimator: ValueAnimator? = null
-	private var rippleX = 0f
-	private var rippleY = 0f
-	private var rippleRadius = 0f
-	private var rippleAlphaProgress = 0f
-	private var rippleAnimator: ValueAnimator? = null
-	private var triggerTouchClaimed = false
-
-	private val triggerGestureDetector = GestureDetector(
-		context,
-		object : GestureDetector.SimpleOnGestureListener() {
-			override fun onDown(e: MotionEvent): Boolean {
-				startRipple(e.x, e.y)
-				return true
-			}
-
-			override fun onSingleTapUp(e: MotionEvent): Boolean {
-				if (activeMenuByMode == ActivationMode.CLICK) {
-					toggleMenu()
-				} else {
-					customClickListener?.onClick(this@FloatingActionButtonMenu)
-				}
-				return true
-			}
-
-			override fun onLongPress(e: MotionEvent) {
-				if (activeMenuByMode == ActivationMode.LONG_CLICK) {
-					toggleMenu()
-				} else {
-					customLongClickListener?.onLongClick(this@FloatingActionButtonMenu)
-				}
-			}
-		}
-	)
-
-	private var iconMenuDrawable: Drawable? = null
-	fun getIconMenu(): Drawable? = iconMenuDrawable
-	fun setIconMenu(icon: Drawable?): FloatingActionButtonMenu {
-		iconMenuDrawable = icon
-		refreshTriggerAppearance()
-		return this
-	}
-
-	private var textMenuValue: CharSequence? = null
-	fun getTextMenu(): CharSequence? = textMenuValue
-	fun setTextMenu(text: CharSequence?): FloatingActionButtonMenu {
-		textMenuValue = text
-		refreshTriggerAppearance()
-		return this
-	}
-
-	private var iconMenuVisibleDrawable: Drawable? = null
-	fun getIconMenuVisible(): Drawable? = iconMenuVisibleDrawable
-	fun setIconMenuVisible(icon: Drawable?): FloatingActionButtonMenu {
-		iconMenuVisibleDrawable = icon
-		refreshTriggerAppearance()
-		return this
-	}
-
-	private var textMenuVisibleValue: CharSequence? = null
-	fun getTextMenuVisible(): CharSequence? = textMenuVisibleValue
-	fun setTextMenuVisible(text: CharSequence?): FloatingActionButtonMenu {
-		textMenuVisibleValue = text
-		refreshTriggerAppearance()
-		return this
-	}
-
-	private var activeMenuByMode: ActivationMode = ActivationMode.CLICK
-	fun getActiveMenuBy(): ActivationMode = activeMenuByMode
-	fun setActiveMenuBy(mode: ActivationMode): FloatingActionButtonMenu {
-		activeMenuByMode = mode
-		return this
-	}
-
-	private var menuOrientationValue: MenuOrientation = MenuOrientation.AUTO
-	fun getMenuOrientation(): MenuOrientation = menuOrientationValue
-	fun setMenuOrientation(orientation: MenuOrientation): FloatingActionButtonMenu {
-		menuOrientationValue = orientation
-		return this
-	}
-
-	private var resolvedOrientation: MenuOrientation = MenuOrientation.TOP
-	private var closeOnItemClickValue: Boolean = true
-	fun isCloseOnItemClick(): Boolean = closeOnItemClickValue
-	fun setCloseOnItemClick(closeOnClick: Boolean): FloatingActionButtonMenu {
-		closeOnItemClickValue = closeOnClick
-		return this
-	}
-
-	private var scrimEnabledValue: Boolean = true
-	fun isScrimEnabled(): Boolean = scrimEnabledValue
-	fun setScrimEnabled(enabled: Boolean): FloatingActionButtonMenu {
-		scrimEnabledValue = enabled
-		return this
-	}
-
-	/**
-	 * Cuando está activo, el ScrollBehavior oculta/muestra por completo el trigger
-	 * (deslizándolo fuera de pantalla) en vez de solo colapsar el texto extendido.
-	 * Desactivado por defecto para preservar el comportamiento previo.
-	 */
-	private var hideOnScrollValue: Boolean = false
-	fun isHideOnScroll(): Boolean = hideOnScrollValue
-	fun setHideOnScroll(enabled: Boolean): FloatingActionButtonMenu {
-		hideOnScrollValue = enabled
-		return this
-	}
-
-	private var isHiddenState: Boolean = false
-	fun isHidden(): Boolean = isHiddenState
-	private var hideShowAnimator: ValueAnimator? = null
-
-	private fun marginBottomPx(): Int =
-		(layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin ?: 0
-
-	/** Desliza el trigger completo fuera de pantalla (comportamiento M3 de hide en scroll). */
-	fun hide(animate: Boolean = true) {
-		if (isHiddenState || menuOpen) return
-		isHiddenState = true
-		hideShowAnimator?.cancel()
-		val targetY = (height + marginBottomPx()).toFloat()
-		if (!animate) {
-			translationY = targetY
-			visibility = View.INVISIBLE
-			return
-		}
-		hideShowAnimator = ValueAnimator.ofFloat(translationY, targetY).apply {
-			duration = itemAnimationDuration
-			interpolator = this@FloatingActionButtonMenu.interpolator
-			addUpdateListener { translationY = it.animatedValue as Float }
-			addListener(object : AnimatorListenerAdapter() {
-				override fun onAnimationEnd(animation: Animator) {
-					if (isHiddenState) visibility = View.INVISIBLE
-				}
-			})
-			start()
-		}
-	}
-
-	/** Vuelve a mostrar el trigger tras un hide(). */
-	fun show(animate: Boolean = true) {
-		if (!isHiddenState) return
-		isHiddenState = false
-		visibility = View.VISIBLE
-		hideShowAnimator?.cancel()
-		if (!animate) {
-			translationY = 0f
-			return
-		}
-		hideShowAnimator = ValueAnimator.ofFloat(translationY, 0f).apply {
-			duration = itemAnimationDuration
-			interpolator = this@FloatingActionButtonMenu.interpolator
-			addUpdateListener { translationY = it.animatedValue as Float }
-			start()
-		}
-	}
-
-	private var scrimColorValue: Int = ColorUtils.setAlphaComponent(
-		Color.BLACK,
-		12
-	)
-
-	fun getScrimColor(): Int = scrimColorValue
-	fun setScrimColor(color: Int): FloatingActionButtonMenu {
-		scrimColorValue = color
-		scrimView?.setBackgroundColor(color)
-		return this
-	}
-
-	private var menuOpen: Boolean = false
-	fun isMenuOpen(): Boolean = menuOpen
-
-	private var selectedItemValue: FloatingActionButtonItem? = null
-	fun getSelectedItem(): FloatingActionButtonItem? = selectedItemValue
 
 	init {
+		clipToOutline = false
 		clipChildren = false
 		clipToPadding = false
-		isClickable = true
-		isFocusable = true
-		setWillNotDraw(false)
 
-		context.obtainStyledAttributes(attrs, R.styleable.FloatingActionButtonMenu, defStyleAttr, 0)
-			.apply {
-				try {
-					setIconMenuVisible(getDrawable(R.styleable.FloatingActionButtonMenu_icon))
-					setTextMenuVisible(getString(R.styleable.FloatingActionButtonMenu_text))
-					setIconMenu(getDrawable(R.styleable.FloatingActionButtonMenu_android_icon))
-					setTextMenu(getString(R.styleable.FloatingActionButtonMenu_android_text))
-					setTextColor(
-						getColor(
-							R.styleable.FloatingActionButtonMenu_android_textColor,
-							getTriggerTextColor()
-						)
-					)
-					if (hasValue(R.styleable.FloatingActionButtonMenu_textColor)) {
-						setTextColorVisible(
-							getColor(
-								R.styleable.FloatingActionButtonMenu_textColor,
-								getTriggerTextColor()
-							)
-						)
-					}
-					setTriggerBackgroundTint(
-						ColorStateList.valueOf(
-							getColor(
-								R.styleable.FloatingActionButtonMenu_android_backgroundTint,
-								getTriggerBackgroundTint().defaultColor
-							)
-						)
-					)
-					if (hasValue(R.styleable.FloatingActionButtonMenu_backgroundTint)) {
-						setTriggerBackgroundTintVisible(
-							ColorStateList.valueOf(
-								getColor(
-									R.styleable.FloatingActionButtonMenu_backgroundTint,
-									getTriggerBackgroundTint().defaultColor
-								)
-							)
-						)
-					}
-					setActiveMenuBy(
-						ActivationMode.entries.toTypedArray()[getInt(
-							R.styleable.FloatingActionButtonMenu_activeMenuBy,
-							0
-						)]
-					)
-					setCloseOnItemClick(
-						getBoolean(
-							R.styleable.FloatingActionButtonMenu_closeOnItemClick,
-							true
-						)
-					)
-					setScrimEnabled(
-						getBoolean(
-							R.styleable.FloatingActionButtonMenu_scrimEnabled,
-							true
-						)
-					)
-					setScrimColor(
-						getColor(
-							R.styleable.FloatingActionButtonMenu_scrimColor,
-							getScrimColor()
-						)
-					)
-					setMenuOrientation(
-						MenuOrientation.entries.toTypedArray()[getInt(
-							R.styleable.FloatingActionButtonMenu_menuOrientation,
-							MenuOrientation.AUTO.ordinal
-						)]
-					)
-					setTriggerColor(
-						getColor(
-							R.styleable.FloatingActionButtonMenu_rippleColor,
-							getTriggerRippleColor()
-						)
-					)
-					setTriggerCornerRadius(
-						getDimension(
-							R.styleable.FloatingActionButtonMenu_cornerRadius,
-							16f.dp
-						)
-					)
-					if (hasValue(R.styleable.FloatingActionButtonMenu_shrunkRippleColor)) {
-						setShrunkRippleColor(
-							getColor(
-								R.styleable.FloatingActionButtonMenu_shrunkRippleColor,
-								getTriggerRippleColor()
-							)
-						)
-					}
-					if (hasValue(R.styleable.FloatingActionButtonMenu_shrunkCornerRadius)) {
-						setShrunkCornerRadius(
-							getDimension(
-								R.styleable.FloatingActionButtonMenu_shrunkCornerRadius,
-								0f
-							)
-						)
-					}
-					if (hasValue(R.styleable.FloatingActionButtonMenu_extendRippleColor)) {
-						setExtendRippleColor(
-							getColor(
-								R.styleable.FloatingActionButtonMenu_extendRippleColor,
-								getTriggerRippleColor()
-							)
-						)
-					}
-					if (hasValue(R.styleable.FloatingActionButtonMenu_extendCornerRadius)) {
-						setExtendCornerRadius(
-							getDimension(
-								R.styleable.FloatingActionButtonMenu_extendCornerRadius,
-								0f
-							)
-						)
-					}
-					setIconSide(
-						IconSide.entries.toTypedArray()[getInt(
-							R.styleable.FloatingActionButtonMenu_iconSide,
-							0
-						)]
-					)
-				} finally {
-					recycle()
+		menu.callback = object : FloatingActionMenu.Callback {
+			override fun onStructureChanged() = rebuildItems()
+			override fun onItemChanged(item: FloatingActionMenuItem) = refreshItem(item)
+		}
+
+		scrimView.apply {
+			visibility = GONE
+			importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+			setOnClickListener { collapse() }
+		}
+		itemsContainer.apply {
+			orientation = LinearLayout.VERTICAL
+			clipChildren = false
+			clipToPadding = false
+			visibility = GONE
+		}
+		toggleButton.apply {
+			elevation = 6f * density
+			contentDescription = openDescription
+			setOnClickListener { toggle() }
+		}
+
+		addView(scrimView, LayoutParams(MATCH, MATCH))
+		addView(itemsContainer, LayoutParams(WRAP, WRAP))
+		addView(toggleButton, LayoutParams(WRAP, WRAP))
+
+		var startExpanded = false
+		val a = context.obtainStyledAttributes(
+			attrs,
+			R.styleable.FloatingActionButtonMenu,
+			defStyleAttr,
+			0
+		)
+		try {
+			alignment =
+				if (a.getInt(R.styleable.FloatingActionButtonMenu_menuAlign, 1) == 0) {
+					Alignment.START
+				} else {
+					Alignment.END
 				}
+			scrimEnabled =
+				a.getBoolean(R.styleable.FloatingActionButtonMenu_scrimEnabled, true)
+			scrimColor =
+				a.getColor(R.styleable.FloatingActionButtonMenu_scrimColor, scrimColor)
+			collapseOnItemClick =
+				a.getBoolean(R.styleable.FloatingActionButtonMenu_collapseItemClicked, true)
+			startExpanded =
+				a.getBoolean(R.styleable.FloatingActionButtonMenu_expanded, false)
+			toggleGlyph = if (a.getInt(R.styleable.FloatingActionButtonMenu_menuIcon, 0) == 1) {
+				ToggleGlyph.MORE_VERT
+			} else {
+				ToggleGlyph.PLUS
 			}
-		resolvedOrientation =
-			if (menuOrientationValue == MenuOrientation.AUTO) MenuOrientation.TOP else menuOrientationValue
-		updateM3RippleColor()
-		refreshTriggerAppearance()
-		elevation = restingElevationPx
+			val menuRes = a.getResourceId(R.styleable.FloatingActionButtonMenu_menu, 0)
+			if (menuRes != 0) menu.inflate(menuRes)
+		} finally {
+			a.recycle()
+		}
+
+		val textArray =
+			context.obtainStyledAttributes(attrs, intArrayOf(android.R.attr.text), defStyleAttr, 0)
+		try {
+			toggleText = textArray.getText(0)
+		} finally {
+			textArray.recycle()
+		}
+		toggleButton.text = toggleText
+		toggleButton.glyph = toggleGlyph
+		updateToggleDescription()
+
+		scrimView.setBackgroundColor(scrimColor)
+		applyLayout()
+		applyProgress(0f)
+		if (startExpanded) setExpanded(true, animate = false)
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// Public API: menu
+	// ---------------------------------------------------------------------------------------------
+
+	/** The wrapper that creates and owns the items. */
+	fun getMenu(): FloatingActionMenu = menu
+
+	/** Appends the items of a menu resource. Shortcut for `getMenu().inflate(menuRes)`. */
+	fun inflateMenu(@MenuRes menuRes: Int) = menu.inflate(menuRes)
+
+	// ---------------------------------------------------------------------------------------------
+	// Public API: expansion
+	// ---------------------------------------------------------------------------------------------
+
+	/** Whether the menu is expanded (or expanding). */
+	fun isExpanded(): Boolean = expanded
+
+	/** Expands or collapses the menu, optionally animating. */
+	fun setExpanded(expanded: Boolean, animate: Boolean = true) {
+		val changed = this.expanded != expanded
+		this.expanded = expanded
+		backCallback.isEnabled = expanded
+		updateToggleDescription()
+
+		val target = if (expanded) 1f else 0f
+		animator?.cancel()
+		if (!animate || !isAttachedToWindow || progress == target) {
+			applyProgress(target)
+		} else {
+			animator = ValueAnimator.ofFloat(progress, target).apply {
+				duration = if (expanded) 300L else 200L
+				interpolator = easing
+				addUpdateListener { applyProgress(it.animatedValue as Float) }
+				addListener(object : AnimatorListenerAdapter() {
+					override fun onAnimationEnd(a: Animator) {
+						if (animator === a) animator = null
+					}
+				})
+				start()
+			}
+		}
+		if (changed) expandedListener?.onExpandedChange(expanded)
+	}
+
+	/** Expands the menu. */
+	fun expand(animate: Boolean = true) = setExpanded(true, animate)
+
+	/** Collapses the menu. */
+	fun collapse(animate: Boolean = true) = setExpanded(false, animate)
+
+	/** Flips the current state. */
+	fun toggle(animate: Boolean = true) = setExpanded(!expanded, animate)
+
+	// ---------------------------------------------------------------------------------------------
+	// Public API: appearance & behavior
+	// ---------------------------------------------------------------------------------------------
+
+	fun getAlignment(): Alignment = alignment
+
+	fun setAlignment(value: Alignment) {
+		if (alignment == value) return
+		alignment = value
+		applyLayout()
+	}
+
+	fun isScrimEnabled(): Boolean = scrimEnabled
+
+	fun setScrimEnabled(enabled: Boolean) {
+		scrimEnabled = enabled
+		applyProgress(progress)
+	}
+
+	@ColorInt
+	fun getScrimColor(): Int = scrimColor
+
+	fun setScrimColor(@ColorInt color: Int) {
+		scrimColor = color
+		scrimView.setBackgroundColor(color)
+	}
+
+	fun isCollapseOnItemClick(): Boolean = collapseOnItemClick
+
+	fun setCollapseOnItemClick(value: Boolean) {
+		collapseOnItemClick = value
+	}
+
+	/** Distance, in pixels, between the toggle and the edges of this view. */
+	fun getEdgeMargin(): Float = edgeMarginPx
+
+	fun setEdgeMargin(px: Float) {
+		edgeMarginPx = px
+		applyLayout()
+	}
+
+	fun getToggleIcon(): Drawable? = toggleIcon
+
+	/**
+	 * Custom icon of the collapsed toggle. It cross-fades with the built-in close (`×`) glyph.
+	 * `null` restores the built-in `+` → `×` morph.
+	 */
+	fun setToggleIcon(icon: Drawable?) {
+		toggleIcon = icon
+		toggleButton.collapsedIcon = icon
+	}
+
+	fun getToggleGlyph(): ToggleGlyph = toggleGlyph
+
+	/**
+	 * Built-in glyph of the collapsed toggle (`app:fabMenuIcon`): [ToggleGlyph.PLUS] or
+	 * [ToggleGlyph.MORE_VERT]. Both animate into an `×` when the menu expands.
+	 * Ignored while a custom drawable is set with [setToggleIcon].
+	 */
+	fun setToggleGlyph(value: ToggleGlyph) {
+		toggleGlyph = value
+		toggleButton.glyph = value
+	}
+
+	/** Accessibility labels of the toggle for each state. */
+	fun setToggleContentDescriptions(open: CharSequence, close: CharSequence) {
+		openDescription = open
+		closeDescription = close
+		descriptionsCustomized = true
+		updateToggleDescription()
+	}
+
+	/** Text of the toggle (same as `android:text`), or `null` when it is a plain FAB. */
+	fun getText(): CharSequence? = toggleText
+
+	/**
+	 * Sets the toggle label, making it an extended FAB while collapsed. The label fades out and the
+	 * button shrinks to a circle when the menu expands. `null` or empty restores the plain FAB.
+	 * Unless [setToggleContentDescriptions] was called, the label is also the collapsed
+	 * accessibility description.
+	 */
+	fun setText(text: CharSequence?) {
+		toggleText = text
+		toggleButton.text = text
+		updateToggleDescription()
+	}
+
+	fun setText(@StringRes resId: Int) {
+		setText(context.getText(resId))
+	}
+
+	private fun updateToggleDescription() {
+		toggleButton.contentDescription = when {
+			expanded -> closeDescription
+			!descriptionsCustomized && !toggleText.isNullOrEmpty() -> toggleText
+			else -> openDescription
+		}
+	}
+
+	fun setToggleCollapsedColors(@ColorInt container: Int, @ColorInt content: Int) {
+		toggleCollapsedContainer = container
+		toggleCollapsedContent = content
+		applyProgress(progress)
+	}
+
+	fun setToggleExpandedColors(@ColorInt container: Int, @ColorInt content: Int) {
+		toggleExpandedContainer = container
+		toggleExpandedContent = content
+		applyProgress(progress)
+	}
+
+	/** Colors of the item buttons (container and icon/text). Disabled items use M3 disabled colors. */
+	fun setItemColors(@ColorInt container: Int, @ColorInt content: Int) {
+		itemContainerColor = container
+		itemContentColor = content
+		rebuildItems()
+	}
+
+	fun setOnItemMenuClickListener(listener: OnItemMenuClickListener?) {
+		itemMenuClickListener = listener
+	}
+
+	fun setOnExpandedChangeListener(listener: OnExpandedChangeListener?) {
+		expandedListener = listener
+	}
+
+	// ---------------------------------------------------------------------------------------------
+	// Internals
+	// ---------------------------------------------------------------------------------------------
+
+	private fun dp(value: Float) = value * density
+
+	private fun themeColor(@AttrRes attr: Int, @ColorInt fallback: Int): Int =
+		MaterialColors.getColor(context, attr, fallback)
+
+	private fun applyLayout() {
+		val horizontal = if (alignment == Alignment.START) Gravity.START else Gravity.END
+		val margin = edgeMarginPx.toInt()
+		val size = dp(56f).toInt()
+		toggleButton.layoutParams =
+			LayoutParams(WRAP, size, Gravity.BOTTOM or horizontal).apply {
+				setMargins(margin, margin, margin, margin)
+			}
+		itemsContainer.gravity = horizontal
+		itemsContainer.layoutParams =
+			LayoutParams(WRAP, WRAP, Gravity.BOTTOM or horizontal).apply {
+				setMargins(margin, margin, margin, margin + size + dp(8f).toInt())
+			}
+		applyItemTransforms(progress)
+	}
+
+	/** Rebuilds every visible item as an [ExtendedFloatingActionButton]. */
+	private fun rebuildItems() {
+		for (i in 0 until itemsContainer.childCount) {
+			(itemsContainer.getChildAt(i).tag as? FloatingActionMenuItem)?.attachButton(null)
+		}
+		itemsContainer.removeAllViews()
+		var shown = 0
+		for (item in menu.getItems()) {
+			if (!item.isVisible()) continue
+			val lp = LinearLayout.LayoutParams(WRAP, WRAP)
+			if (shown > 0) lp.topMargin = dp(4f).toInt()
+			itemsContainer.addView(createItemView(item), lp)
+			shown++
+		}
+		applyItemTransforms(progress)
+	}
+
+	private fun createItemView(item: FloatingActionMenuItem): ExtendedFloatingActionButton {
+		val fab = ExtendedFloatingActionButton(context)
+		fab.tag = item
+		fab.cornerRadius = 128
+		fab.stateListAnimator = null
+		item.attachButton(fab)
+		fab.isSingleLine = false
+		fab.maxLines = 2
+		fab.ellipsize = TextUtils.TruncateAt.END
+		fab.textAlignment = TEXT_ALIGNMENT_VIEW_START
+		fab.setOnClickListener { handleItemClick(item) }
+		bindItemView(fab, item)
+		return fab
+	}
+
+	/** Re-binds the button of a single item after one of its properties changed. */
+	private fun refreshItem(item: FloatingActionMenuItem) {
+		for (i in 0 until itemsContainer.childCount) {
+			val child = itemsContainer.getChildAt(i)
+			if (child.tag === item && child is ExtendedFloatingActionButton) {
+				bindItemView(child, item)
+				return
+			}
+		}
+	}
+
+	private fun bindItemView(fab: ExtendedFloatingActionButton, item: FloatingActionMenuItem) {
+		val enabled = item.isEnabled()
+		val container = if (enabled) itemContainerColor
+		else ColorUtils.setAlphaComponent(disabledOnSurface, 0x1F)
+		val content = if (enabled) itemContentColor
+		else ColorUtils.setAlphaComponent(disabledOnSurface, 0x61)
+
+		fab.isEnabled = enabled
+		fab.backgroundTintList = ColorStateList.valueOf(container)
+		fab.rippleColor = ColorStateList.valueOf(ColorUtils.setAlphaComponent(content, 0x1F))
+		fab.setTextColor(content)
+		fab.iconTint = ColorStateList.valueOf(content)
+		fab.icon = item.getIcon()
+		fab.contentDescription = item.getContentDescription()
+
+		val help = item.getHelpText()
+		if (help.isNullOrEmpty()) {
+			fab.text = item.getLabel()
+		} else {
+			val helpColor = if (enabled) ColorUtils.setAlphaComponent(content, 0xB8) else content
+			val text = SpannableStringBuilder(item.getLabel()).append('\n')
+			val start = text.length
+			text.append(help)
+			text.setSpan(
+				RelativeSizeSpan(0.85f),
+				start,
+				text.length,
+				Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+			)
+			text.setSpan(
+				ForegroundColorSpan(helpColor),
+				start,
+				text.length,
+				Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+			)
+			fab.text = text
+		}
+	}
+
+	private fun handleItemClick(item: FloatingActionMenuItem) {
+		if (!expanded || !item.isEnabled()) return
+		item.dispatchClick()
+		itemMenuClickListener?.onItemMenuClick(item)
+		if (collapseOnItemClick) collapse()
+	}
+
+	/** Single place that renders a progress value (0 = collapsed, 1 = expanded). */
+	private fun applyProgress(p: Float) {
+		progress = p
+		val radius = dp(16f) + (dp(28f) - dp(16f)) * p
+		toggleButton.update(
+			p,
+			ColorUtils.blendARGB(toggleCollapsedContainer, toggleExpandedContainer, p),
+			ColorUtils.blendARGB(toggleCollapsedContent, toggleExpandedContent, p),
+			radius
+		)
+		val visible = p > 0f
+		itemsContainer.visibility = if (visible) VISIBLE else GONE
+		scrimView.visibility = if (visible && scrimEnabled) VISIBLE else GONE
+		scrimView.alpha = p
+		applyItemTransforms(p)
+	}
+
+	/** Staggers the items: the one closest to the toggle enters first and leaves last. */
+	private fun applyItemTransforms(p: Float) {
+		val n = itemsContainer.childCount
+		if (n == 0) return
+		val window = if (n == 1) 1f else 0.6f
+		val step = if (n > 1) (1f - window) / (n - 1) else 0f
+		val pivotRight =
+			(alignment == Alignment.END) != (layoutDirection == LAYOUT_DIRECTION_RTL)
+		for (i in 0 until n) {
+			val v = itemsContainer.getChildAt(i)
+			val distanceToToggle = n - 1 - i
+			val local = ((p - distanceToToggle * step) / window).coerceIn(0f, 1f)
+			val scale = 0.85f + 0.15f * local
+			v.alpha = local
+			v.translationY = (1f - local) * dp(16f)
+			v.scaleX = scale
+			v.scaleY = scale
+			v.pivotX = if (pivotRight) v.width.toFloat() else 0f
+			v.pivotY = v.height.toFloat()
+		}
+	}
+
+	override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+		super.onLayout(changed, left, top, right, bottom)
+		// Item sizes are known only now, so the scale pivots can be resolved.
+		applyItemTransforms(progress)
 	}
 
 	override fun onAttachedToWindow() {
 		super.onAttachedToWindow()
-		(parent as? ViewGroup)?.let {
-			it.clipChildren = false
-			it.clipToPadding = false
+		backDispatcher = findComponentActivity(context)?.onBackPressedDispatcher?.also {
+			it.addCallback(backCallback)
 		}
+		backCallback.isEnabled = expanded
 	}
 
-	override fun addView(child: View, index: Int, params: LayoutParams?) {
-		if (child is FloatingActionButtonItem) {
-			if (child.visibility == View.GONE) {
-				// Se respeta GONE tal cual fue declarado: no entra a la lista de items,
-				// no se mide, no se anima y no participa del layout del menú.
-				super.addView(child, index, params)
-				return
-			}
-			items.add(child)
-			child.visibility = View.INVISIBLE
-			child.alpha = 0f
-			child.setOnClickListener { onItemTapped(child) }
-		}
-		super.addView(child, index, params)
+	override fun onDetachedFromWindow() {
+		// Keep the logical state; only drop the back callback and snap any running animation.
+		backCallback.remove()
+		backDispatcher = null
+		animator?.cancel()
+		animator = null
+		applyProgress(if (expanded) 1f else 0f)
+		super.onDetachedFromWindow()
 	}
 
-	fun getItemCount(): Int = items.size
-	fun getItemAt(index: Int): FloatingActionButtonItem = items[index]
-
-	private val MenuOrientation.isVertical: Boolean
-		get() = this == MenuOrientation.TOP || this == MenuOrientation.BOTTOM
-
-	/** true si el layout actual corre de derecha a izquierda (locale RTL). */
-	private val isLayoutRtl: Boolean
-		get() = layoutDirection == LAYOUT_DIRECTION_RTL
-
-	/**
-	 * TOP/BOTTOM (y el fallback de AUTO) no especifican un lado explícito: el trigger
-	 * se pega al borde "final" (end), que es la derecha física en LTR y la izquierda en RTL.
-	 * LEFT/RIGHT son elecciones físicas explícitas del desarrollador y no se espejan.
-	 */
-	private val triggerHugsPhysicalRight: Boolean
-		get() = when (resolvedOrientation) {
-			MenuOrientation.RIGHT -> false
-			MenuOrientation.LEFT -> true
-			else -> !isLayoutRtl
-		}
-
-	override fun onRtlPropertiesChanged(layoutDirection: Int) {
-		super.onRtlPropertiesChanged(layoutDirection)
-		recomputeTriggerExpandedWidth()
-		requestLayout()
-		invalidate()
-	}
-
-	private fun recomputeTriggerExpandedWidth() {
-		val text = currentTriggerText
-		triggerExpandedWidthPx = if (text.isNullOrEmpty()) {
-			triggerHeightPx
-		} else {
-			val textWidth = textPaint.measureText(text, 0, text.length)
-			val hasIcon = currentTriggerIcon != null
-			val iconGap = if (hasIcon) triggerIconSizePx + triggerIconTextGapPx else 0f
-			triggerPaddingStartPx + iconGap + textWidth + triggerPaddingEndPx
-		}
-	}
-
-	override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-		recomputeTriggerExpandedWidth()
-		for (i in 0 until items.size) {
-			items[i].measure(
-				MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
-				MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
-			)
-		}
-
-		val desiredWidth: Int
-		val desiredHeight: Int
-		if (resolvedOrientation.isVertical) {
-			var maxChildWidth = 0
-			var sumHeight = 0
-			for (i in 0 until items.size) {
-				val item = items[i]
-				if (item.measuredWidth > maxChildWidth) maxChildWidth = item.measuredWidth
-				sumHeight += item.measuredHeight + itemSpacingPx
-			}
-			desiredWidth =
-				maxOf(triggerExpandedWidthPx.toInt(), maxChildWidth) + (shadowPaddingPx * 2)
-			desiredHeight = triggerHeightPx.toInt() + sumHeight + (shadowPaddingPx * 2)
-		} else {
-			var sumWidth = 0
-			var maxChildHeight = 0
-			for (i in 0 until items.size) {
-				val item = items[i]
-				sumWidth += item.measuredWidth + itemSpacingPx
-				if (item.measuredHeight > maxChildHeight) maxChildHeight = item.measuredHeight
-			}
-			desiredWidth = triggerExpandedWidthPx.toInt() + sumWidth + (shadowPaddingPx * 2)
-			desiredHeight = maxOf(triggerHeightPx.toInt(), maxChildHeight) + (shadowPaddingPx * 2)
-		}
-		setMeasuredDimension(
-			resolveSize(desiredWidth, widthMeasureSpec),
-			resolveSize(desiredHeight, heightMeasureSpec)
-		)
-	}
-
-	override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-		val width = r - l - (shadowPaddingPx * 2)
-		val height = b - t - (shadowPaddingPx * 2)
-
-		triggerSlotLeft =
-			if (triggerHugsPhysicalRight) width - triggerExpandedWidthPx.toInt() + shadowPaddingPx else shadowPaddingPx
-		triggerSlotTop =
-			if (resolvedOrientation == MenuOrientation.BOTTOM) shadowPaddingPx else height - triggerHeightPx.toInt() + shadowPaddingPx
-		layoutTriggerRect()
-
-		when (resolvedOrientation) {
-			MenuOrientation.TOP -> {
-				var itemBottom = triggerSlotTop - itemSpacingPx
-				for (i in 0 until items.size) {
-					val item = items[i]
-					val itemLeft = if (triggerHugsPhysicalRight) {
-						width + shadowPaddingPx - item.measuredWidth
-					} else {
-						shadowPaddingPx
-					}
-					val itemTop = itemBottom - item.measuredHeight
-					item.layout(itemLeft, itemTop, itemLeft + item.measuredWidth, itemBottom)
-					item.translationY =
-						if (menuOpen) 0f else (itemBottom - triggerSlotTop).toFloat()
-					itemBottom = itemTop - itemSpacingPx
-				}
-			}
-
-			MenuOrientation.BOTTOM -> {
-				var itemTop = triggerSlotTop + triggerHeightPx.toInt() + itemSpacingPx
-				for (i in 0 until items.size) {
-					val item = items[i]
-					val itemLeft = if (triggerHugsPhysicalRight) {
-						width + shadowPaddingPx - item.measuredWidth
-					} else {
-						shadowPaddingPx
-					}
-					item.layout(
-						itemLeft,
-						itemTop,
-						itemLeft + item.measuredWidth,
-						itemTop + item.measuredHeight
-					)
-					item.translationY =
-						if (menuOpen) 0f else (itemTop - (triggerSlotTop + triggerHeightPx.toInt())).toFloat()
-					itemTop += item.measuredHeight + itemSpacingPx
-				}
-			}
-
-			MenuOrientation.LEFT -> {
-				var itemRight = triggerSlotLeft - itemSpacingPx
-				for (i in 0 until items.size) {
-					val item = items[i]
-					val itemTop = height + shadowPaddingPx - item.measuredHeight
-					val itemLeft = itemRight - item.measuredWidth
-					item.layout(itemLeft, itemTop, itemRight, itemTop + item.measuredHeight)
-					item.translationX =
-						if (menuOpen) 0f else (itemRight - triggerSlotLeft).toFloat()
-					itemRight = itemLeft - itemSpacingPx
-				}
-			}
-
-			MenuOrientation.RIGHT -> {
-				var itemLeft = triggerSlotLeft + triggerExpandedWidthPx.toInt() + itemSpacingPx
-				for (i in 0 until items.size) {
-					val item = items[i]
-					val itemTop = height + shadowPaddingPx - item.measuredHeight
-					item.layout(
-						itemLeft,
-						itemTop,
-						itemLeft + item.measuredWidth,
-						itemTop + item.measuredHeight
-					)
-					item.translationX =
-						if (menuOpen) 0f else (itemLeft - (triggerSlotLeft + triggerExpandedWidthPx.toInt())).toFloat()
-					itemLeft += item.measuredWidth + itemSpacingPx
-				}
-			}
-
-			MenuOrientation.AUTO -> Unit
-		}
-	}
-
-	private fun layoutTriggerRect() {
-		val currentWidth =
-			triggerHeightPx + (triggerExpandedWidthPx - triggerHeightPx) * triggerWidthFraction
-		val pillLeft = if (triggerHugsPhysicalRight) {
-			triggerSlotLeft + (triggerExpandedWidthPx - currentWidth)
-		} else {
-			triggerSlotLeft.toFloat()
-		}
-		triggerRect.set(
-			pillLeft,
-			triggerSlotTop.toFloat(),
-			pillLeft + currentWidth,
-			triggerSlotTop + triggerHeightPx
-		)
-	}
-
-	private fun computeAutoOrientation(): MenuOrientation {
-		val loc = IntArray(2)
-		getLocationOnScreen(loc)
-		val triggerScreenLeft = loc[0] + triggerSlotLeft
-		val triggerScreenTop = loc[1] + triggerSlotTop
-		val screenWidth = resources.displayMetrics.widthPixels
-		val screenHeight = resources.displayMetrics.heightPixels
-
-		val spaceAbove = triggerScreenTop
-		val spaceBelow = screenHeight - (triggerScreenTop + triggerHeightPx.toInt())
-		val spaceLeft = triggerScreenLeft
-		val spaceRight = screenWidth - (triggerScreenLeft + triggerExpandedWidthPx.toInt())
-
-		var verticalNeeded = 0
-		var horizontalNeeded = 0
-		for (i in 0 until items.size) {
-			verticalNeeded += items[i].measuredHeight + itemSpacingPx
-			horizontalNeeded += items[i].measuredWidth + itemSpacingPx
-		}
-
-		return when {
-			spaceAbove >= verticalNeeded -> MenuOrientation.TOP
-			spaceBelow >= verticalNeeded -> MenuOrientation.BOTTOM
-			spaceLeft >= horizontalNeeded -> MenuOrientation.LEFT
-			spaceRight >= horizontalNeeded -> MenuOrientation.RIGHT
-			maxOf(spaceAbove, spaceBelow) >= maxOf(spaceLeft, spaceRight) ->
-				if (spaceAbove >= spaceBelow) MenuOrientation.TOP else MenuOrientation.BOTTOM
-
-			else -> if (spaceLeft >= spaceRight) MenuOrientation.LEFT else MenuOrientation.RIGHT
-		}
-	}
-
-	override fun onDraw(canvas: Canvas) {
-		super.onDraw(canvas)
-
-		drawTriggerShadow(canvas)
-
-		triggerPillPath.reset()
-		triggerPillPath.addRoundRect(
-			triggerRect,
-			resolvedTriggerCornerRadius,
-			resolvedTriggerCornerRadius,
-			Path.Direction.CW
-		)
-		val activeBackgroundTint = resolvedTriggerBackgroundTint
-		triggerFillPaint.color = activeBackgroundTint.getColorForState(
-			drawableState,
-			activeBackgroundTint.defaultColor
-		)
-		canvas.drawPath(triggerPillPath, triggerFillPaint)
-
-		if (rippleAlphaProgress > 0f) {
-			canvas.save()
-			canvas.clipPath(triggerPillPath)
-			val activeRippleColor = resolvedTriggerRippleColor
-			val baseAlpha = Color.alpha(activeRippleColor)
-			triggerRipplePaint.color = activeRippleColor
-			triggerRipplePaint.alpha = (baseAlpha * rippleAlphaProgress).toInt()
-			canvas.drawCircle(rippleX, rippleY, rippleRadius, triggerRipplePaint)
-			canvas.restore()
-		}
-
-		val text = currentTriggerText
-		val hasText = !text.isNullOrEmpty() && triggerWidthFraction > 0.05f
-		// IconSide es lógico (start/end): en RTL, START se dibuja visualmente a la derecha.
-		val isLogicalStart = iconSideValue == IconSide.START
-		val isIconStart = if (isLayoutRtl) !isLogicalStart else isLogicalStart
-
-		val iconLeft = if (!hasText) {
-			triggerRect.left + (triggerRect.width() - triggerIconSizePx) / 2f
-		} else if (isIconStart) {
-			triggerRect.left + triggerPaddingStartPx
-		} else {
-			triggerRect.right - triggerPaddingEndPx - triggerIconSizePx
-		}
-		val iconTop = triggerRect.top + (triggerHeightPx - triggerIconSizePx) / 2f
-
-		currentTriggerIcon?.let { icon ->
-			val tinted = icon.mutate()
-			tinted.setTint(
-				triggerIconTintValue.getColorForState(
-					drawableState,
-					triggerIconTintValue.defaultColor
-				)
-			)
-			tinted.setBounds(
-				iconLeft.toInt(),
-				iconTop.toInt(),
-				(iconLeft + triggerIconSizePx).toInt(),
-				(iconTop + triggerIconSizePx).toInt()
-			)
-			tinted.draw(canvas)
-		}
-
-		if (hasText && text != null) {
-			textPaint.color = resolvedTextColor
-			textPaint.alpha = (triggerWidthFraction * 255).toInt()
-			textPaint.typeface = Typeface.DEFAULT_BOLD
-			val baseline = triggerRect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2f
-			val textStart = if (currentTriggerIcon == null) {
-				triggerRect.left + triggerPaddingStartPx
-			} else if (isIconStart) {
-				iconLeft + triggerIconSizePx + triggerIconTextGapPx
-			} else {
-				triggerRect.left + triggerPaddingStartPx
-			}
-			canvas.save()
-			canvas.clipRect(triggerRect)
-			canvas.drawText(text, 0, text.length, textStart, baseline, textPaint)
-			canvas.restore()
-		}
-	}
-
-	private fun drawTriggerShadow(canvas: Canvas) {
-		triggerShadowPaint.color = Color.BLACK
-		for (i in 3 downTo 1) {
-			val offset = 1.5f.dp * i
-			triggerShadowPaint.alpha = 20 / i
-			canvas.drawRoundRect(
-				triggerRect.left - (1f.dp * i),
-				triggerRect.top + offset - (1f.dp * i),
-				triggerRect.right + (1f.dp * i),
-				triggerRect.bottom + offset + (1f.dp * i),
-				resolvedTriggerCornerRadius + (1f.dp * i),
-				resolvedTriggerCornerRadius + (1f.dp * i),
-				triggerShadowPaint
-			)
-		}
-	}
-
-	override fun onTouchEvent(event: MotionEvent): Boolean {
-		if (!isEnabled) return false
-		when (event.actionMasked) {
-			MotionEvent.ACTION_DOWN -> {
-				triggerTouchClaimed = triggerRect.contains(event.x, event.y)
-				if (!triggerTouchClaimed) return false
-				isPressedState = true
-				updateElevationState()
-			}
-
-			MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-				if (triggerTouchClaimed) endRipple()
-				val wasClaimed = triggerTouchClaimed
-				triggerTouchClaimed = false
-				if (isPressedState) {
-					isPressedState = false
-					updateElevationState()
-				}
-				if (!wasClaimed) return false
-			}
-		}
-		if (!triggerTouchClaimed && event.actionMasked != MotionEvent.ACTION_UP &&
-			event.actionMasked != MotionEvent.ACTION_CANCEL
-		) return false
-		triggerGestureDetector.onTouchEvent(event)
-		return true
-	}
-
-	override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
-		super.onInitializeAccessibilityNodeInfo(info)
-		info.className = "android.widget.Button"
-		info.isClickable = true
-		if (contentDescription.isNullOrEmpty()) {
-			info.text = currentTriggerText ?: (if (menuOpen) "Close menu" else "Open menu")
-		}
-	}
-
-	private fun startRipple(x: Float, y: Float) {
-		rippleAnimator?.cancel()
-		rippleX = x
-		rippleY = y
-		rippleAlphaProgress = 1f
-		val maxRadius = maxOf(triggerRect.width(), triggerRect.height()) * 1.2f
-		rippleAnimator = ValueAnimator.ofFloat(0f, maxRadius).apply {
-			duration = 240L
-			interpolator = this@FloatingActionButtonMenu.interpolator
-			addUpdateListener {
-				rippleRadius = it.animatedValue as Float
-				invalidate()
-			}
-			start()
-		}
-	}
-
-	private fun endRipple() {
-		ValueAnimator.ofFloat(rippleAlphaProgress, 0f).apply {
-			duration = 200L
-			addUpdateListener {
-				rippleAlphaProgress = it.animatedValue as Float
-				invalidate()
-			}
-			start()
-		}
-	}
-
-	fun toggleMenu(animate: Boolean = true) {
-		if (menuOpen) closeMenu(animate) else openMenu(animate)
-	}
-
-	fun openMenu(animate: Boolean = true) {
-		if (menuOpen) return
-		if (isHiddenState) show(animate)
-		wasExtendedBeforeMenuOpen = triggerExtended
-		menuOpen = true
-		refreshTriggerAppearance()
-
-		if (menuOrientationValue == MenuOrientation.AUTO) {
-			resolvedOrientation = computeAutoOrientation()
-		}
-		requestLayout()
-
-		runAfterNextLayout {
-			val startCascade = {
-				showScrim(animate)
-				for (index in 0 until items.size) {
-					val item = items[index]
-					item.visibility = VISIBLE
-					val animator = item.animate()
-						.alpha(1f)
-						.setStartDelay(if (animate) index * itemStaggerDelay else 0L)
-						.setDuration(if (animate) itemAnimationDuration else 0L)
-						.setInterpolator(interpolator)
-					if (resolvedOrientation.isVertical) animator.translationY(0f) else animator.translationX(
-						0f
-					)
-					animator.start()
-				}
-				onMenuStateChangeListener?.onMenuOpened(this)
-			}
-
-			if (animate && !triggerExtended) {
-				expanded(true) { startCascade() }
-			} else {
-				startCascade()
-			}
-		}
-	}
-
-	private fun runAfterNextLayout(action: () -> Unit) {
-		addOnLayoutChangeListener(object : OnLayoutChangeListener {
-			override fun onLayoutChange(
-				v: View, left: Int, top: Int, right: Int, bottom: Int,
-				oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int
-			) {
-				v.removeOnLayoutChangeListener(this)
-				action()
-			}
-		})
-	}
-
-	fun closeMenu(animate: Boolean = true) {
-		if (!menuOpen) return
-		menuOpen = false
-		refreshTriggerAppearance()
-		hideScrim(animate)
-
-		val vertical = resolvedOrientation.isVertical
-		for (index in 0 until items.size) {
-			val item = items[index]
-			val animator = item.animate()
-				.alpha(0f)
-				.setStartDelay(if (animate) index * itemStaggerDelay else 0L)
-				.setDuration(if (animate) itemAnimationDuration else 0L)
-				.setInterpolator(interpolator)
-				.withEndAction { item.visibility = View.INVISIBLE }
-			if (vertical) {
-				val collapsedTop = when (resolvedOrientation) {
-					MenuOrientation.TOP -> triggerSlotTop - itemSpacingPx - item.height
-					else -> triggerSlotTop + triggerHeightPx.toInt() + itemSpacingPx
-				}
-				animator.translationY((collapsedTop - item.top).toFloat())
-			} else {
-				val collapsedLeft = when (resolvedOrientation) {
-					MenuOrientation.LEFT -> triggerSlotLeft - itemSpacingPx - item.width
-					else -> triggerSlotLeft + triggerExpandedWidthPx.toInt() + itemSpacingPx
-				}
-				animator.translationX((collapsedLeft - item.left).toFloat())
-			}
-			animator.start()
-		}
-
-		if (!wasExtendedBeforeMenuOpen) {
-			shrunk(animate)
-		}
-
-		onMenuStateChangeListener?.onMenuClosed(this)
-	}
-
-	fun selectItem(item: FloatingActionButtonItem, animate: Boolean = true) {
-		onItemTapped(item)
-	}
-
-	private fun onItemTapped(item: FloatingActionButtonItem) {
-		onMenuItemClickedListener?.invoke(item)
-
-		val previous = selectedItemValue
-		if (previous !== item) {
-			previous?.let {
-				it.isSelected = false
-				onMenuItemChangedListener?.onFloatingActionItemUnselect(it)
-			}
-			item.isSelected = true
-			selectedItemValue = item
-			onMenuItemChangedListener?.onFloatingActionItemSelect(item)
-		} else {
-			onMenuItemChangedListener?.onFloatingActionItemReselect(item)
-		}
-
-		if (closeOnItemClickValue) closeMenu()
-	}
-
-	private fun refreshTriggerAppearance() {
-		currentTriggerIcon = (if (menuOpen) iconMenuVisibleDrawable else null) ?: iconMenuDrawable
-		currentTriggerText = (if (menuOpen) textMenuVisibleValue else null) ?: textMenuValue
-		recomputeTriggerExpandedWidth()
-		if (triggerExtended) layoutTriggerRect()
-		invalidate()
-	}
-
-	fun expanded(animate: Boolean = true, onEnd: (() -> Unit)? = null) {
-		if (triggerExtended) {
-			onEnd?.invoke()
-			return
-		}
-		animateTriggerWidth(1f, animate, onEnd)
-	}
-
-	fun shrunk(animate: Boolean = true) {
-		if (!triggerExtended) return
-		animateTriggerWidth(0f, animate, null)
-	}
-
-	private fun animateTriggerWidth(target: Float, animate: Boolean, onEnd: (() -> Unit)?) {
-		triggerMotionAnimator?.cancel()
-		triggerExtended = target == 1f
-		if (!animate) {
-			triggerWidthFraction = target
-			layoutTriggerRect()
-			invalidate()
-			onEnd?.invoke()
-			return
-		}
-		triggerMotionAnimator = ValueAnimator.ofFloat(triggerWidthFraction, target).apply {
-			duration = 200L
-			interpolator = this@FloatingActionButtonMenu.interpolator
-			addUpdateListener {
-				triggerWidthFraction = it.animatedValue as Float
-				layoutTriggerRect()
-				invalidate()
-			}
-			addListener(object : AnimatorListenerAdapter() {
-				override fun onAnimationEnd(animation: Animator) {
-					onEnd?.invoke()
-				}
-			})
-			start()
-		}
-	}
-
-	private fun findScrimHost(): Pair<ViewGroup, View>? {
-		var child: View = this
-		var current: ViewParent? = parent
-		while (current is ViewGroup) {
-			if (current is CoordinatorLayout || current.id == android.R.id.content) {
-				return current to child
-			}
-			child = current
-			current = current.parent
+	private fun findComponentActivity(start: Context): ComponentActivity? {
+		var c: Context? = start
+		while (c is ContextWrapper) {
+			if (c is ComponentActivity) return c
+			c = c.baseContext
 		}
 		return null
 	}
 
-	private fun ensureScrim(): View {
-		scrimView?.let { return it }
-		val (host, anchorChild) = findScrimHost() ?: return View(context).also { scrimView = it }
-		val scrim = View(context).apply {
-			setBackgroundColor(scrimColorValue)
-			alpha = 0f
-			setOnClickListener { closeMenu() }
-		}
-		scrimView = scrim
-		host.addView(
-			scrim,
-			host.indexOfChild(anchorChild),
-			ViewGroup.LayoutParams(
-				ViewGroup.LayoutParams.MATCH_PARENT,
-				ViewGroup.LayoutParams.MATCH_PARENT
-			)
-		)
-		return scrim
-	}
-
-	private fun showScrim(animate: Boolean) {
-		if (!scrimEnabledValue) return
-		val scrim = ensureScrim()
-		scrim.visibility = View.VISIBLE
-		scrim.animate()
-			.alpha(1f)
-			.setDuration(if (animate) itemAnimationDuration else 0L)
-			.setInterpolator(interpolator)
-			.start()
-	}
-
-	private fun hideScrim(animate: Boolean) {
-		if (!scrimEnabledValue) return
-		scrimView?.animate()
-			?.alpha(0f)
-			?.setDuration(if (animate) itemAnimationDuration else 0L)
-			?.setInterpolator(interpolator)
-			?.withEndAction { scrimView?.visibility = View.INVISIBLE }
-			?.start()
-	}
-
-	override fun onDetachedFromWindow() {
-		super.onDetachedFromWindow()
-		scrimView?.let { (it.parent as? ViewGroup)?.removeView(it) }
-		scrimView = null
-		triggerMotionAnimator?.cancel()
-		rippleAnimator?.cancel()
-		elevationAnimator?.cancel()
-		hideShowAnimator?.cancel()
-	}
-
-	override fun onSaveInstanceState(): Parcelable? {
-		val superState = super.onSaveInstanceState()
-		val state = SavedState(superState)
-		state.menuOpenState = menuOpen
-		state.triggerExtendedState = triggerExtended
-		state.triggerWidthFractionState = triggerWidthFraction
-		state.resolvedOrientationOrdinal = resolvedOrientation.ordinal
-		state.hiddenState = isHiddenState
-		state.selectedItemIndex = selectedItemValue?.let { items.indexOf(it) } ?: -1
+	override fun onSaveInstanceState(): Parcelable {
+		val state = SavedState(super.onSaveInstanceState())
+		state.expanded = expanded
 		return state
 	}
 
@@ -1288,143 +875,235 @@ class FloatingActionButtonMenu @JvmOverloads constructor(
 			return
 		}
 		super.onRestoreInstanceState(state.superState)
-
-		menuOpen = state.menuOpenState
-		triggerExtended = state.triggerExtendedState
-		triggerWidthFraction = state.triggerWidthFractionState
-		resolvedOrientation = MenuOrientation.entries.toTypedArray()
-			.getOrElse(state.resolvedOrientationOrdinal) { resolvedOrientation }
-		isHiddenState = state.hiddenState
-
-		if (state.selectedItemIndex in items.indices) {
-			val restored = items[state.selectedItemIndex]
-			restored.isSelected = true
-			selectedItemValue = restored
-		}
-
-		refreshTriggerAppearance()
-		visibility = if (isHiddenState && !menuOpen) View.INVISIBLE else View.VISIBLE
-
-		if (menuOpen) {
-			for (index in 0 until items.size) {
-				val item = items[index]
-				item.visibility = View.VISIBLE
-				item.alpha = 1f
-			}
-			showScrim(false)
-		}
-
-		requestLayout()
+		setExpanded(state.expanded, animate = false)
 	}
 
-	/** Estado persistido de FloatingActionButtonMenu para sobrevivir rotaciones y recreación de proceso. */
-	class SavedState : BaseSavedState {
-		var menuOpenState: Boolean = false
-		var triggerExtendedState: Boolean = true
-		var triggerWidthFractionState: Float = 1f
-		var resolvedOrientationOrdinal: Int = MenuOrientation.TOP.ordinal
-		var hiddenState: Boolean = false
-		var selectedItemIndex: Int = -1
+	// ---------------------------------------------------------------------------------------------
+	// Toggle FAB: drawn by hand so the + → × glyph and the shape can be driven by one progress value
+	// ---------------------------------------------------------------------------------------------
+
+	private class ToggleButtonView(context: Context, private val density: Float) :
+		FrameLayout(context) {
+
+		private val containerPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+		private val glyphPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+			style = Paint.Style.STROKE
+			strokeCap = Paint.Cap.ROUND
+			strokeWidth = 2f * density
+		}
+		private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+			textSize = TypedValue.applyDimension(
+				TypedValue.COMPLEX_UNIT_SP, 14f, context.resources.displayMetrics
+			)
+			typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+		}
+		private val glyphFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+		private val armPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+			style = Paint.Style.STROKE
+			strokeCap = Paint.Cap.BUTT
+		}
+		private val baseSize = 56f * density
+		private val iconCenter = 28f * density
+		private val textStart = 52f * density
+		private val textEndPadding = 20f * density
+		private val bounds = RectF()
+		private val glyphHalfLength = 7f * density
+		private val iconHalfSize = (12f * density).toInt()
+		private var cornerRadius = 0f
+		private var progress = 0f
+
+		@ColorInt
+		private var contentColor = Color.BLACK
+
+		var collapsedIcon: Drawable? = null
+			set(value) {
+				field = value?.mutate()
+				invalidate()
+			}
+
+		var text: CharSequence? = null
+			set(value) {
+				field = value
+				requestLayout()
+				invalidate()
+			}
+
+		var glyph: ToggleGlyph = ToggleGlyph.PLUS
+			set(value) {
+				field = value
+				invalidate()
+			}
+
+		init {
+			setWillNotDraw(false)
+			isClickable = true
+			isFocusable = true
+			clipToOutline = true
+			outlineProvider = object : ViewOutlineProvider() {
+				override fun getOutline(view: View, outline: Outline) {
+					outline.setRoundRect(0, 0, view.width, view.height, cornerRadius)
+				}
+			}
+			foreground = RippleDrawable(
+				ColorStateList.valueOf(0x1F000000),
+				null,
+				ColorDrawable(Color.BLACK)
+			)
+		}
+
+		fun update(
+			progress: Float,
+			@ColorInt container: Int,
+			@ColorInt content: Int,
+			radius: Float
+		) {
+			this.progress = progress
+			containerPaint.color = container
+			contentColor = content
+			cornerRadius = radius
+			(foreground as? RippleDrawable)
+				?.setColor(ColorStateList.valueOf(ColorUtils.setAlphaComponent(content, 0x1F)))
+			if (!text.isNullOrEmpty()) requestLayout()
+			invalidateOutline()
+			invalidate()
+		}
+
+		/** Width goes from "icon + label" (collapsed) to a 56dp circle (expanded). */
+		override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+			val t = text
+			val extended = if (t.isNullOrEmpty()) {
+				baseSize
+			} else {
+				textStart + textPaint.measureText(t, 0, t.length) + textEndPadding
+			}
+			var w = extended + (baseSize - extended) * progress
+			if (MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED) {
+				w = w.coerceAtMost(MeasureSpec.getSize(widthMeasureSpec).toFloat())
+			}
+			setMeasuredDimension((w + 0.5f).toInt(), baseSize.toInt())
+		}
+
+		override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+			super.onSizeChanged(w, h, oldw, oldh)
+			invalidateOutline()
+		}
+
+		/** Draws the label; it fades out during the first half of the expansion. */
+		private fun drawLabel(canvas: Canvas, cy: Float, rtl: Boolean) {
+			val t = text
+			if (t.isNullOrEmpty()) return
+			val alpha = (1f - progress * 2f).coerceIn(0f, 1f)
+			if (alpha <= 0f) return
+			textPaint.color = contentColor
+			textPaint.alpha = (alpha * 255).toInt()
+			textPaint.textAlign = if (rtl) Paint.Align.RIGHT else Paint.Align.LEFT
+			val metrics = textPaint.fontMetrics
+			val baseline = cy - (metrics.ascent + metrics.descent) / 2f
+			val x = if (rtl) width - textStart else textStart
+			canvas.drawText(t, 0, t.length, x, baseline, textPaint)
+		}
+
+		override fun onDraw(canvas: Canvas) {
+			super.onDraw(canvas)
+			bounds.set(0f, 0f, width.toFloat(), height.toFloat())
+			canvas.drawRoundRect(bounds, cornerRadius, cornerRadius, containerPaint)
+
+			val rtl = layoutDirection == LAYOUT_DIRECTION_RTL
+			val cx = if (rtl) width - iconCenter else iconCenter
+			val cy = height / 2f
+			drawLabel(canvas, cy, rtl)
+			val custom = collapsedIcon
+			if (custom == null) {
+				when (glyph) {
+					ToggleGlyph.PLUS -> drawPlus(canvas, cx, cy, 45f * progress, 255)
+					ToggleGlyph.MORE_VERT -> drawMoreVert(canvas, cx, cy)
+				}
+			} else {
+				custom.setBounds(
+					(cx - iconHalfSize).toInt(), (cy - iconHalfSize).toInt(),
+					(cx + iconHalfSize).toInt(), (cy + iconHalfSize).toInt()
+				)
+				custom.setTint(contentColor)
+				custom.alpha = ((1f - progress) * 255).toInt()
+				custom.draw(canvas)
+				drawPlus(canvas, cx, cy, 45f, (progress * 255).toInt())
+			}
+		}
+
+		/**
+		 * Three dots that become an `×` as [progress] goes 0 → 1. The top dot splits into the two
+		 * upper arms, the bottom dot into the two lower arms, and the middle dot ends up as the
+		 * crossing. Each arm starts as a dot (zero length) and stretches from its dot to a corner,
+		 * while its base slides to the center a bit later.
+		 */
+		private fun drawMoreVert(canvas: Canvas, cx: Float, cy: Float) {
+			glyphFill.color = contentColor
+			armPaint.color = contentColor
+			val radius = (2f - progress) * density // dot radius 2dp → stroke half-width 1dp
+			armPaint.strokeWidth = radius * 2f
+			val spacing = 6f * density
+			val corner = 5f * density
+			val tipT = smoothStep(progress / 0.7f)
+			val baseT = smoothStep((progress - 0.3f) / 0.7f)
+
+			canvas.drawCircle(cx, cy, radius, glyphFill)
+			for (sy in intArrayOf(-1, 1)) {
+				val startY = sy * spacing
+				val baseY = startY - startY * baseT
+				val tipY = startY + (sy * corner - startY) * tipT
+				for (sx in intArrayOf(-1, 1)) {
+					val tipX = sx * corner * tipT
+					canvas.drawLine(cx, cy + baseY, cx + tipX, cy + tipY, armPaint)
+					canvas.drawCircle(cx, cy + baseY, radius, glyphFill)
+					canvas.drawCircle(cx + tipX, cy + tipY, radius, glyphFill)
+				}
+			}
+		}
+
+		private fun smoothStep(t: Float): Float {
+			val c = t.coerceIn(0f, 1f)
+			return c * c * (3f - 2f * c)
+		}
+
+		private fun drawPlus(canvas: Canvas, cx: Float, cy: Float, rotation: Float, alpha: Int) {
+			if (alpha <= 0) return
+			glyphPaint.color = contentColor
+			glyphPaint.alpha = alpha
+			canvas.save()
+			canvas.rotate(rotation, cx, cy)
+			canvas.drawLine(cx - glyphHalfLength, cy, cx + glyphHalfLength, cy, glyphPaint)
+			canvas.drawLine(cx, cy - glyphHalfLength, cx, cy + glyphHalfLength, glyphPaint)
+			canvas.restore()
+		}
+
+		override fun getAccessibilityClassName(): CharSequence = Button::class.java.name
+	}
+
+	private class SavedState : View.BaseSavedState {
+		var expanded = false
 
 		constructor(superState: Parcelable?) : super(superState)
 
 		private constructor(source: Parcel) : super(source) {
-			menuOpenState = source.readByte() != 0.toByte()
-			triggerExtendedState = source.readByte() != 0.toByte()
-			triggerWidthFractionState = source.readFloat()
-			resolvedOrientationOrdinal = source.readInt()
-			hiddenState = source.readByte() != 0.toByte()
-			selectedItemIndex = source.readInt()
+			expanded = source.readInt() == 1
 		}
 
 		override fun writeToParcel(out: Parcel, flags: Int) {
 			super.writeToParcel(out, flags)
-			out.writeByte(if (menuOpenState) 1 else 0)
-			out.writeByte(if (triggerExtendedState) 1 else 0)
-			out.writeFloat(triggerWidthFractionState)
-			out.writeInt(resolvedOrientationOrdinal)
-			out.writeByte(if (hiddenState) 1 else 0)
-			out.writeInt(selectedItemIndex)
+			out.writeInt(if (expanded) 1 else 0)
 		}
 
 		companion object {
 			@JvmField
-			val CREATOR = object : Parcelable.Creator<SavedState> {
+			val CREATOR: Parcelable.Creator<SavedState> = object : Parcelable.Creator<SavedState> {
 				override fun createFromParcel(source: Parcel): SavedState = SavedState(source)
 				override fun newArray(size: Int): Array<SavedState?> = arrayOfNulls(size)
 			}
 		}
 	}
 
-	private var onMenuItemClickedListener: ((FloatingActionButtonItem) -> Unit)? = null
-	private var onMenuItemChangedListener: OnMenuItemChangedListener? = null
-	private var onMenuStateChangeListener: OnMenuStateChangeListener? = null
-
-	fun setOnMenuItemClickedListener(listener: (FloatingActionButtonItem) -> Unit): FloatingActionButtonMenu {
-		onMenuItemClickedListener = listener
-		return this
-	}
-
-	fun setOnMenuItemChangedListener(listener: OnMenuItemChangedListener): FloatingActionButtonMenu {
-		onMenuItemChangedListener = listener
-		return this
-	}
-
-	fun setOnMenuStateChangeListener(listener: OnMenuStateChangeListener): FloatingActionButtonMenu {
-		onMenuStateChangeListener = listener
-		return this
-	}
-
-	interface OnMenuItemChangedListener {
-		fun onFloatingActionItemSelect(item: FloatingActionButtonItem)
-		fun onFloatingActionItemUnselect(item: FloatingActionButtonItem)
-		fun onFloatingActionItemReselect(item: FloatingActionButtonItem)
-	}
-
-	interface OnMenuStateChangeListener {
-		fun onMenuOpened(menu: FloatingActionButtonMenu)
-		fun onMenuClosed(menu: FloatingActionButtonMenu)
-	}
-
-	override fun getBehavior(): CoordinatorLayout.Behavior<FloatingActionButtonMenu> =
-		ScrollBehavior()
-
-	inner class ScrollBehavior : CoordinatorLayout.Behavior<FloatingActionButtonMenu>() {
-		override fun onStartNestedScroll(
-			coordinatorLayout: CoordinatorLayout,
-			child: FloatingActionButtonMenu,
-			directTargetChild: View,
-			target: View,
-			axes: Int,
-			type: Int
-		): Boolean {
-			if (menuOpen) return false
-			return axes and ViewCompat.SCROLL_AXIS_VERTICAL != 0
-		}
-
-		override fun onNestedScroll(
-			coordinatorLayout: CoordinatorLayout,
-			child: FloatingActionButtonMenu,
-			target: View,
-			dxConsumed: Int,
-			dyConsumed: Int,
-			dxUnconsumed: Int,
-			dyUnconsumed: Int,
-			type: Int,
-			consumed: IntArray
-		) {
-			if (menuOpen) return
-			if (hideOnScrollValue) {
-				when {
-					dyConsumed > 0 -> hide()
-					dyConsumed < 0 -> show()
-				}
-			} else {
-				when {
-					dyConsumed > 0 -> shrunk()
-					dyConsumed < 0 -> expanded()
-				}
-			}
-		}
+	private companion object {
+		const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
+		const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 	}
 }

@@ -143,10 +143,11 @@ class MainActivity : ComponentPermissionAppCompatActivity() {
 	}
 
 	private fun setupListeners() {
-		layout_binding.projectCreator.setOnClickListener {
-			if (layout_binding.projectCreator.isMenuOpen()) layout_binding.projectCreator.closeMenu()
-			val intent = Intent(this, ProjectCreatorActivity::class.java)
-			startActivity(intent)
+		layout_binding.projectCreator.setOnItemMenuClickListener {
+			if (it.getId() == R.id.menu_add) {
+				val intent = Intent(this, ProjectCreatorActivity::class.java)
+				startActivity(intent)
+			}
 		}
 
 		layout_binding.tabsButton.setOnRightItemMenuClickListener {

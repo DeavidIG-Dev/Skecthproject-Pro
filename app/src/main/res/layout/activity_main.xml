@@ -11,16 +11,46 @@
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content">
 
-		<com.deavidig.mod.deanielig.search.widget.ComponentSearchBar
+		<com.deavidig.mod.deanielig.search.widget.ComponentDockedSearchBar
 			android:id="@+id/barSearch"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			android:hint="Enter project name..."
 			android:paddingVertical="12dp"
+			style="@style/Widget.ComponentMaterial.ComponentDockedSearchBar.Joined"
 			app:pillElevation="0dp"
 			app:pillMenuRight="@menu/activity_project_creator_back_searchbar_right_menu"
 			app:title="Type here to Search Project"
-			app:titleTextSize="18dp" />
+			app:titleTextSize="18dp">
+
+			<LinearLayout
+				android:layout_width="match_parent"
+				android:layout_height="match_parent"
+				android:orientation="vertical">
+
+				<TextView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="HI" />
+
+				<TextView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="HI" />
+
+				<TextView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="HI" />
+
+				<TextView
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:text="HI" />
+
+			</LinearLayout>
+
+		</com.deavidig.mod.deanielig.search.widget.ComponentDockedSearchBar>
 
 		<androidx.constraintlayout.widget.ConstraintLayout
 			android:layout_width="match_parent"
@@ -84,7 +114,7 @@
 		tools:listitem="@layout/activity_main_recyclerview_project" />
 
 	<!-- <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-		android:id="@+id/projectCreator"
+		android:id="@+id/project_creator"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="end|bottom"
@@ -92,8 +122,8 @@
 		android:text="New Project"
 		app:icon="@drawable/ic_add_24" /> -->
 
-	<com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonMenu
-		android:id="@+id/projectCreator"
+	<!-- <com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonGroup
+		android:id="@+id/project_creator"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="end|bottom"
@@ -110,6 +140,17 @@
 			android:text="Restore"
 			app:icon="@drawable/ic_settings_backup_restore_24" />
 
-	</com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonMenu>
+	</com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonGroup> -->
+
+	<com.deavidig.mod.deanielig.floatingactionbutton.FloatingActionButtonMenu
+		android:id="@+id/project_creator"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:layout_gravity="bottom|end"
+		android:layout_margin="4dp"
+		android:text="Settings"
+		app:scrimEnabled="false"
+		app:menuIcon="more_vert"
+		app:menu="@menu/activity_main_floatingactionbuttonmenu_menu" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

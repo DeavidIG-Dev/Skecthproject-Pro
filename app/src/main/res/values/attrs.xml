@@ -230,7 +230,7 @@
 		<attr name="strokeWidth" format="dimension" />
 	</declare-styleable>
 
-	<declare-styleable name="FloatingActionButtonMenu">
+	<declare-styleable name="FloatingActionButtonGroup">
 
 		<attr name="android:icon" format="reference" />
 
@@ -299,6 +299,100 @@
 		<attr name="floatingBarIconTint" format="color" />
 		<!-- Width of a plain FAB relative to its height. 1 = circle, default 1.5 (capsule). -->
 		<attr name="floatingBarFabWidthRatio" format="float" />
+	</declare-styleable>
+
+	<declare-styleable name="FloatingActionButtonMenu">
+		<!-- Menu resource: title = label, icon = icon, titleCondensed = help text. -->
+		<attr name="menu" format="reference" />
+		<!-- Side where the toggle and the items are anchored (RTL aware). Default: end. -->
+		<attr name="menuAlign" format="enum">
+			<enum name="start" value="0" />
+			<enum name="end" value="1" />
+		</attr>
+		<attr name="menuIcon" format="enum">
+			<enum name="plus" value="0" />
+			<enum name="more_vert" value="1" />
+		</attr>
+		<attr name="scrimEnabled" />
+		<attr name="scrimColor" />
+		<attr name="expanded" />
+		<attr name="collapseItemClicked" format="boolean" />
+	</declare-styleable>
+
+	<declare-styleable name="ComponentDockedSearchBar">
+
+		<!--
+			Atributos de ComponentSearchBar, aceptados tal cual en el DockedSearchBar.
+			Se listan aquí SOLO para el autocompletado del editor: el parseo lo hace
+			ComponentDockedSearchBar leyendo el styleable ComponentSearchBar.
+			(Ya están definidos en tu attrs_component_toolbar.xml: se referencian sin formato.)
+		-->
+		<attr name="title" />
+		<attr name="subtitle" />
+		<attr name="titleTextColor" />
+		<attr name="titleTextSize" />
+		<attr name="titleTextAppearance" />
+		<attr name="subtitleTextColor" />
+		<attr name="subtitleTextSize" />
+		<attr name="subtitleTextAppearance" />
+		<attr name="titleAlignment" />
+		<attr name="subtitleAlignment" />
+
+		<attr name="navigationIcon" />
+		<attr name="navigationIconTint" />
+		<attr name="navigationContentDescription" />
+
+		<attr name="searchNavigationIcon" />
+		<attr name="searchNavigationIconTint" />
+		<attr name="searchNavigationContentDescription" />
+
+		<attr name="android:hint" />
+		<attr name="android:text" />
+		<attr name="clearIconEnable" />
+		<attr name="clearIconTint" />
+
+		<attr name="leftMenu" />
+		<attr name="rightMenu" />
+		<attr name="leftOverflowIcon" />
+		<attr name="rightOverflowIcon" />
+
+		<attr name="pillMenuLeft" />
+		<attr name="pillMenuLeftOverflowIcon" />
+		<attr name="pillMenuRight" />
+		<attr name="pillMenuRightOverflowIcon" />
+
+		<attr name="pillBackgroundColor" />
+		<attr name="pillElevation" />
+
+		<attr name="contentInsetStartWithNavigation" />
+		<attr name="contentInsetEnd" />
+
+		<!-- Propios del DockedSearchBar -->
+
+		<!-- true (estilo Joined): panel pegado a la píldora, ambos forman una sola superficie.
+			 false (estilo Unjoined, por defecto): panel despegado, con un pequeño espacio. -->
+		<attr name="dockedJoined" format="boolean" />
+
+		<!-- Estilo Joined: divisor entre la píldora y el panel (activo por defecto). -->
+		<attr name="dockedDividerEnabled" format="boolean" />
+		<attr name="dockedDividerColor" format="color" />
+		<attr name="dockedDividerHeight" format="dimension" />
+
+		<!-- true: el panel ocupa espacio y empuja a los demás. false (por defecto): bar + panel en un Dialog con Scrim. -->
+		<attr name="forceSpaceDocked" format="boolean" />
+
+		<!-- Altura máxima del panel docked (240dp por defecto; 0 = sin límite). -->
+		<attr name="dockedContentMaxHeight" format="dimension" />
+
+		<!-- Modo Dialog: activa/desactiva el oscurecido y su color (negro 32% por defecto). -->
+		<attr name="dockedScrimEnabled" format="boolean" />
+		<attr name="dockedScrimColor" format="color" />
+
+		<!-- Panel: por defecto sigue el color, el radio y la elevación de la píldora. -->
+		<attr name="dockedPanelBackgroundColor" format="color" />
+		<attr name="dockedPanelCornerRadius" format="dimension" />
+		<attr name="dockedPanelElevation" format="dimension" />
+
 	</declare-styleable>
 
 </resources>
