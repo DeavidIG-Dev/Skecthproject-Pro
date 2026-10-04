@@ -3,8 +3,10 @@ package com.deavidig.mod.deanielig.search.widget
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorFilter
@@ -15,25 +17,40 @@ import android.graphics.RectF
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.RippleDrawable
+import android.graphics.drawable.ShapeDrawable
+import android.graphics.drawable.shapes.OvalShape
 import android.os.Parcel
 import android.os.Parcelable
 import android.util.AttributeSet
 import android.util.TypedValue
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.ViewTreeObserver
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.annotation.ColorInt
 import androidx.annotation.DrawableRes
 import androidx.annotation.MenuRes
 import androidx.annotation.Px
 import androidx.annotation.StringRes
+import androidx.appcompat.view.menu.MenuItemImpl
+import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.AppCompatImageButton
+import androidx.appcompat.widget.PopupMenu
+import androidx.appcompat.widget.TooltipCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.widget.ImageViewCompat
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import com.deavidig.sketchprojectpro.R
 import com.google.android.material.color.MaterialColors
@@ -104,6 +121,9 @@ import com.google.android.material.R as MR
  * - Scroll flags (`app:layout_scrollFlags`) go on THIS view when it lives inside an `AppBarLayout`.
  * - The dialog mode needs an Activity-backed [Context] (the usual case when inflating from XML).
  * - In the joined style the pill's own shadow is turned off and the shared surface casts it instead.
+ * - The dock's own menus (`dockedMenuLeft` / `dockedMenuRight`) live INSIDE the pill only and show only
+ *   while the dock is open; they do not touch the bar's four menu slots. They follow the bar's menu
+ *   rules: `showAsAction="always"` items are buttons, the rest go to the overflow popup.
  * - In the joined style a divider separates the pill from the panel (`dockedDividerEnabled`,
  *   `dockedDividerColor`, `dockedDividerHeight`; `colorOutlineVariant` and 1dp by default).
  *
@@ -121,7 +141,15 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 		private const val DEFAULT_ELEVATION_DP = 2
 		private const val DEFAULT_SCRIM_COLOR = 0x52000000 // black @ 32%, the M3 scrim
 		private const val ANIM_DURATION = 250L
+		private const val ENABLED_ALPHA = 1f
+		private const val DISABLED_ALPHA = 0.38f
 	}
+
+	/**
+	 * The dock's two menu slots, both INSIDE the pill (outside the pill is not supported yet):
+	 * [LEFT] leads the pill's content, [RIGHT] trails it. They only show while the dock is open.
+	 */
+	enum class DockedMenuSide { LEFT, RIGHT }
 
 	// region State (everything private; public API through getters/setters) ----------------------
 
@@ -165,6 +193,14 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 	private var overlay: Overlay? = null
 	private var overlayRestorePending = false
 	private var revealAnimator: ValueAnimator? = null
+
+	// The dock's own menus: live INSIDE the pill, independent from the bar's four menu slots.
+	private val dockedLeftState =
+		DockedMenuState(LinearLayout(context), AppCompatImageButton(context))
+	private val dockedRightState =
+		DockedMenuState(LinearLayout(context), AppCompatImageButton(context))
+	@ColorInt
+	private var dockedMenuTint: Int? = null
 
 	private var searchActiveListener: ComponentSearchBar.OnSearchActiveChangeListener? = null
 
@@ -276,6 +312,89 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 		var closing: Boolean = false
 	}
 
+	/** [view] is either an AppCompatImageButton (item with an icon) or a text AppCompatButton (item without one). */
+	private data class DockedEntry(val item: MenuItem, val view: View)
+
+	/** Everything one dock menu slot needs; same shape as the bar's own menu slots so the engine is written once. */
+	private class DockedMenuState(
+		val container: LinearLayout,
+		val overflowButton: AppCompatImageButton
+	) {
+		var holder: PopupMenu? = null
+		var entries: List<DockedEntry> = emptyList()
+		val forcedOverflowIds = mutableSetOf<Int>()
+		var selectedItemId: Int = NO_ITEM_ID
+		var longSelectedItemId: Int = NO_ITEM_ID
+		var overflowPopup: PopupMenu? = null
+		var customOverflowIcon: Drawable? = null
+
+		var clickListener: ComponentSearchBar.OnItemMenuClickListener? = null
+		var longClickListener: ComponentSearchBar.OnItemMenuLongClickListener? = null
+		var changedListener: ComponentSearchBar.OnItemMenuChangedListener? = null
+		var longChangedListener: ComponentSearchBar.OnItemMenuLongChangedListener? = null
+	}
+
+	/** Proxy that refreshes its own slot whenever a setter that affects what is on screen is called. */
+	private class DockedReactiveItem(
+		private val delegate: MenuItem,
+		private val onChanged: () -> Unit
+	) : MenuItem by delegate {
+		override fun setIcon(icon: Drawable?): MenuItem {
+			delegate.icon = icon; onChanged(); return this
+		}
+
+		override fun setIcon(iconRes: Int): MenuItem {
+			delegate.setIcon(iconRes); onChanged(); return this
+		}
+
+		override fun setTitle(title: CharSequence?): MenuItem {
+			delegate.title = title; onChanged(); return this
+		}
+
+		override fun setTitle(titleRes: Int): MenuItem {
+			delegate.setTitle(titleRes); onChanged(); return this
+		}
+
+		override fun setTitleCondensed(title: CharSequence?): MenuItem {
+			delegate.titleCondensed = title; onChanged(); return this
+		}
+
+		override fun setShowAsAction(actionEnum: Int) {
+			delegate.setShowAsAction(actionEnum); onChanged()
+		}
+
+		override fun setShowAsActionFlags(actionEnum: Int): MenuItem {
+			delegate.setShowAsActionFlags(actionEnum); onChanged(); return this
+		}
+
+		override fun setVisible(visible: Boolean): MenuItem {
+			delegate.isVisible = visible; onChanged(); return this
+		}
+
+		override fun setEnabled(enabled: Boolean): MenuItem {
+			delegate.isEnabled = enabled; onChanged(); return this
+		}
+
+		/** The real, unwrapped item -needed to cast to MenuItemImpl. */
+		fun unwrap(): MenuItem = delegate
+	}
+
+	/** Wraps a whole [Menu] so the items it hands out are already reactive. */
+	private class DockedReactiveMenu(
+		private val delegate: Menu,
+		private val wrap: (MenuItem) -> MenuItem
+	) : Menu by delegate {
+		override fun getItem(index: Int): MenuItem = wrap(delegate.getItem(index))
+		override fun findItem(id: Int): MenuItem? = delegate.findItem(id)?.let(wrap)
+		override fun add(title: CharSequence?): MenuItem = wrap(delegate.add(title))
+		override fun add(titleRes: Int): MenuItem = wrap(delegate.add(titleRes))
+		override fun add(groupId: Int, itemId: Int, order: Int, title: CharSequence?): MenuItem =
+			wrap(delegate.add(groupId, itemId, order, title))
+
+		override fun add(groupId: Int, itemId: Int, order: Int, titleRes: Int): MenuItem =
+			wrap(delegate.add(groupId, itemId, order, titleRes))
+	}
+
 	private val surfaceOutline = object : ViewOutlineProvider() {
 		override fun getOutline(view: View, outline: Outline) {
 			val r = surface.rect
@@ -315,6 +434,9 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 		})
 		panel.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateJoinedSurface() }
 		placeholder.visibility = GONE
+		setupDockedSide(dockedLeftState)
+		setupDockedSide(dockedRightState)
+		attachDockedMenus()
 
 		searchBar.setOnSearchActiveChangeListener { active -> onSearchActiveChanged(active) }
 		searchBar.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
@@ -533,6 +655,22 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 				panelCornerRadius =
 					a.getDimension(R.styleable.ComponentDockedSearchBar_dockedPanelCornerRadius, 0f)
 			}
+			if (a.hasValue(R.styleable.ComponentDockedSearchBar_dockedMenuIconTint)) {
+				dockedMenuTint = a.getColor(
+					R.styleable.ComponentDockedSearchBar_dockedMenuIconTint,
+					Color.DKGRAY
+				)
+				applyDockedOverflowIcon(dockedLeftState)
+				applyDockedOverflowIcon(dockedRightState)
+			}
+			a.getDrawable(R.styleable.ComponentDockedSearchBar_dockedMenuLeftOverflowIcon)
+				?.let { setDockedOverflowIcon(DockedMenuSide.LEFT, it) }
+			a.getDrawable(R.styleable.ComponentDockedSearchBar_dockedMenuRightOverflowIcon)
+				?.let { setDockedOverflowIcon(DockedMenuSide.RIGHT, it) }
+			a.getResourceId(R.styleable.ComponentDockedSearchBar_dockedMenuLeft, 0)
+				.takeIf { it != 0 }?.let { inflateDockedMenu(DockedMenuSide.LEFT, it) }
+			a.getResourceId(R.styleable.ComponentDockedSearchBar_dockedMenuRight, 0)
+				.takeIf { it != 0 }?.let { inflateDockedMenu(DockedMenuSide.RIGHT, it) }
 			dividerEnabled = a.getBoolean(
 				R.styleable.ComponentDockedSearchBar_dockedDividerEnabled,
 				dividerEnabled
@@ -739,6 +877,7 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 	// region Active state / panel reveal ---------------------------------------------------------
 
 	private fun onSearchActiveChanged(active: Boolean) {
+		updateDockedMenuVisibility()
 		if (forceSpaceDocked) {
 			updatePanelVisibility(animate = true)
 		} else {
@@ -808,16 +947,28 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 		panel.requestLayout()
 	}
 
-	/** Pill bounds relative to the bar: `[left, right, bottom, top]`. The pill is the widest visible `LinearLayout` child of the bar. */
-	private fun pillBounds(): IntArray? {
-		var best: View? = null
+	/** The pill: the bar's `LinearLayout` child that holds the query field. Found by structure, so it works before any layout pass. */
+	private fun findPill(): LinearLayout? {
 		for (i in 0 until searchBar.childCount) {
 			val child = searchBar.getChildAt(i)
-			if (child is LinearLayout && child.visibility != GONE && (best == null || child.width > best.width)) best =
-				child
+			if (child is LinearLayout && containsEditText(child)) return child
 		}
-		return best?.takeIf { it.width > 0 }
-			?.let { intArrayOf(it.left, it.right, it.bottom, it.top) }
+		return null
+	}
+
+	private fun containsEditText(group: ViewGroup): Boolean {
+		for (i in 0 until group.childCount) {
+			val child = group.getChildAt(i)
+			if (child is EditText) return true
+			if (child is ViewGroup && containsEditText(child)) return true
+		}
+		return false
+	}
+
+	/** Pill bounds relative to the bar: `[left, right, bottom, top]`, or `null` until the pill has been laid out. */
+	private fun pillBounds(): IntArray? {
+		val pill = findPill()?.takeIf { it.visibility != GONE && it.width > 0 } ?: return null
+		return intArrayOf(pill.left, pill.right, pill.bottom, pill.top)
 	}
 
 	/** Aligns the panel with the pill's edges, right under it (no gap when joined). */
@@ -1060,6 +1211,7 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 
 	override fun onAttachedToWindow() {
 		super.onAttachedToWindow()
+		attachDockedMenus()
 		if (overlayRestorePending) {
 			overlayRestorePending = false
 			restoreChildren()
@@ -1184,6 +1336,493 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 	// endregion
 
 
+	// region Public API: the dock's menus (inside the pill) -----------------------------------
+	// Same shape as the bar's own menu API (inflate / get / clear / refresh / overflow / listeners),
+	// with two slots: LEFT leads the pill's content, RIGHT trails it. Both show only while the dock is open.
+
+	/** Inflates [menuRes] into [side], replacing whatever was there before. */
+	@SuppressLint("RestrictedApi")
+	fun inflateDockedMenu(side: DockedMenuSide, @MenuRes menuRes: Int) {
+		val state = dockedStateFor(side)
+		val popup = PopupMenu(context, state.container)
+		popup.menuInflater.inflate(menuRes, popup.menu)
+		state.holder = popup
+		state.entries = buildDockedEntries(state, popup.menu)
+		populateDockedSide(state, popup.menu)
+		attachDockedMenus()
+	}
+
+	fun inflateDockedLeftMenu(@MenuRes menuRes: Int) =
+		inflateDockedMenu(DockedMenuSide.LEFT, menuRes)
+
+	fun inflateDockedRightMenu(@MenuRes menuRes: Int) =
+		inflateDockedMenu(DockedMenuSide.RIGHT, menuRes)
+
+	/** Returns a reactive [Menu] for [side] -its items refresh the slot when mutated- or `null` if nothing was inflated yet. */
+	fun getDockedMenu(side: DockedMenuSide): Menu? {
+		val state = dockedStateFor(side)
+		return state.holder?.menu?.let {
+			DockedReactiveMenu(it) { item ->
+				wrapDocked(
+					state,
+					item
+				)
+			}
+		}
+	}
+
+	fun getDockedLeftMenu(): Menu? = getDockedMenu(DockedMenuSide.LEFT)
+	fun getDockedRightMenu(): Menu? = getDockedMenu(DockedMenuSide.RIGHT)
+
+	/** The currently selected item (reactive) of [side], or `null` if nothing is selected. */
+	fun getSelectedDockedMenuItem(side: DockedMenuSide): MenuItem? {
+		val state = dockedStateFor(side)
+		return state.holder?.menu?.findItem(state.selectedItemId)?.let { wrapDocked(state, it) }
+	}
+
+	fun getSelectedDockedLeftMenuItem(): MenuItem? = getSelectedDockedMenuItem(DockedMenuSide.LEFT)
+	fun getSelectedDockedRightMenuItem(): MenuItem? =
+		getSelectedDockedMenuItem(DockedMenuSide.RIGHT)
+
+	/** Removes all items from [side] and resets its selection state. */
+	fun clearDockedMenu(side: DockedMenuSide) {
+		val state = dockedStateFor(side)
+		state.holder?.menu?.clear()
+		state.entries = emptyList()
+		state.selectedItemId = NO_ITEM_ID
+		populateDockedSide(state, null)
+	}
+
+	fun clearDockedLeftMenu() = clearDockedMenu(DockedMenuSide.LEFT)
+	fun clearDockedRightMenu() = clearDockedMenu(DockedMenuSide.RIGHT)
+
+	/** Rebuilds the buttons of [side] from the menu's current state (visibility/enabled/icon mutated externally). */
+	fun refreshDockedMenu(side: DockedMenuSide) = refreshDockedState(dockedStateFor(side))
+
+	fun refreshDockedLeftMenu() = refreshDockedMenu(DockedMenuSide.LEFT)
+	fun refreshDockedRightMenu() = refreshDockedMenu(DockedMenuSide.RIGHT)
+
+	/** Forces the item with [itemId] to ALWAYS live in [side]'s overflow, regardless of `showAsAction`. */
+	fun setDockedItemAlwaysInOverflow(
+		side: DockedMenuSide,
+		itemId: Int,
+		alwaysInOverflow: Boolean
+	) {
+		val state = dockedStateFor(side)
+		if (alwaysInOverflow) state.forcedOverflowIds.add(itemId) else state.forcedOverflowIds.remove(
+			itemId
+		)
+		refreshDockedState(state)
+	}
+
+	fun setDockedLeftItemAlwaysInOverflow(itemId: Int, alwaysInOverflow: Boolean) =
+		setDockedItemAlwaysInOverflow(DockedMenuSide.LEFT, itemId, alwaysInOverflow)
+
+	fun setDockedRightItemAlwaysInOverflow(itemId: Int, alwaysInOverflow: Boolean) =
+		setDockedItemAlwaysInOverflow(DockedMenuSide.RIGHT, itemId, alwaysInOverflow)
+
+	fun setOnDockedItemMenuClickListener(
+		side: DockedMenuSide,
+		listener: ComponentSearchBar.OnItemMenuClickListener?
+	) {
+		dockedStateFor(side).clickListener = listener
+	}
+
+	fun setOnDockedItemMenuLongClickListener(
+		side: DockedMenuSide,
+		listener: ComponentSearchBar.OnItemMenuLongClickListener?
+	) {
+		dockedStateFor(side).longClickListener = listener
+	}
+
+	fun setOnDockedItemMenuChangedListener(
+		side: DockedMenuSide,
+		listener: ComponentSearchBar.OnItemMenuChangedListener?
+	) {
+		dockedStateFor(side).changedListener = listener
+	}
+
+	fun setOnDockedItemMenuLongChangedListener(
+		side: DockedMenuSide,
+		listener: ComponentSearchBar.OnItemMenuLongChangedListener?
+	) {
+		dockedStateFor(side).longChangedListener = listener
+	}
+
+	fun setOnDockedLeftItemMenuClickListener(listener: ComponentSearchBar.OnItemMenuClickListener?) =
+		setOnDockedItemMenuClickListener(DockedMenuSide.LEFT, listener)
+
+	fun setOnDockedLeftItemMenuLongClickListener(listener: ComponentSearchBar.OnItemMenuLongClickListener?) =
+		setOnDockedItemMenuLongClickListener(DockedMenuSide.LEFT, listener)
+
+	fun setOnDockedLeftItemMenuChangedListener(listener: ComponentSearchBar.OnItemMenuChangedListener?) =
+		setOnDockedItemMenuChangedListener(DockedMenuSide.LEFT, listener)
+
+	fun setOnDockedLeftItemMenuLongChangedListener(listener: ComponentSearchBar.OnItemMenuLongChangedListener?) =
+		setOnDockedItemMenuLongChangedListener(DockedMenuSide.LEFT, listener)
+
+	fun setOnDockedRightItemMenuClickListener(listener: ComponentSearchBar.OnItemMenuClickListener?) =
+		setOnDockedItemMenuClickListener(DockedMenuSide.RIGHT, listener)
+
+	fun setOnDockedRightItemMenuLongClickListener(listener: ComponentSearchBar.OnItemMenuLongClickListener?) =
+		setOnDockedItemMenuLongClickListener(DockedMenuSide.RIGHT, listener)
+
+	fun setOnDockedRightItemMenuChangedListener(listener: ComponentSearchBar.OnItemMenuChangedListener?) =
+		setOnDockedItemMenuChangedListener(DockedMenuSide.RIGHT, listener)
+
+	fun setOnDockedRightItemMenuLongChangedListener(listener: ComponentSearchBar.OnItemMenuLongChangedListener?) =
+		setOnDockedItemMenuLongChangedListener(DockedMenuSide.RIGHT, listener)
+
+	/** Replaces the three-dots icon of [side]'s overflow button; `null` goes back to the default dots. */
+	fun setDockedOverflowIcon(side: DockedMenuSide, icon: Drawable?) {
+		val state = dockedStateFor(side)
+		state.customOverflowIcon = icon
+		applyDockedOverflowIcon(state)
+	}
+
+	fun setDockedOverflowIcon(side: DockedMenuSide, @DrawableRes iconRes: Int) =
+		setDockedOverflowIcon(side, ContextCompat.getDrawable(context, iconRes))
+
+	fun setDockedLeftOverflowIcon(icon: Drawable?) =
+		setDockedOverflowIcon(DockedMenuSide.LEFT, icon)
+
+	fun setDockedLeftOverflowIcon(@DrawableRes iconRes: Int) =
+		setDockedOverflowIcon(DockedMenuSide.LEFT, iconRes)
+
+	fun setDockedRightOverflowIcon(icon: Drawable?) =
+		setDockedOverflowIcon(DockedMenuSide.RIGHT, icon)
+
+	fun setDockedRightOverflowIcon(@DrawableRes iconRes: Int) =
+		setDockedOverflowIcon(DockedMenuSide.RIGHT, iconRes)
+
+	/** Tint for ALL dock item icons and the default overflow dots; `null` uses the theme's `colorOnSurfaceVariant`. */
+	fun setDockedMenuIconTint(@ColorInt color: Int?) {
+		dockedMenuTint = color
+		applyDockedOverflowIcon(dockedLeftState)
+		applyDockedOverflowIcon(dockedRightState)
+		refreshDockedState(dockedLeftState)
+		refreshDockedState(dockedRightState)
+	}
+
+	// endregion
+
+
+	// region Dock menu engine (shared by LEFT / RIGHT) ------------------------------------------
+
+	private fun dockedStateFor(side: DockedMenuSide): DockedMenuState = when (side) {
+		DockedMenuSide.LEFT -> dockedLeftState
+		DockedMenuSide.RIGHT -> dockedRightState
+	}
+
+	private fun wrapDocked(state: DockedMenuState, item: MenuItem): MenuItem =
+		DockedReactiveItem(item) { refreshDockedState(state) }
+
+	private fun refreshDockedState(state: DockedMenuState) {
+		val menu = state.holder?.menu ?: return
+		state.entries = buildDockedEntries(state, menu)
+		populateDockedSide(state, menu)
+	}
+
+	private fun setupDockedSide(state: DockedMenuState) {
+		state.container.orientation = HORIZONTAL
+		state.container.visibility = GONE
+		state.overflowButton.apply {
+			val pad = dpToPx(12)
+			scaleType = ImageView.ScaleType.CENTER_INSIDE
+			background = createCompactRipple()
+			setPadding(pad, pad, pad, pad)
+			layoutParams = LinearLayout.LayoutParams(dpToPx(48), dpToPx(48))
+			visibility = GONE
+		}
+		applyDockedOverflowIcon(state)
+	}
+
+	private fun applyDockedOverflowIcon(state: DockedMenuState) {
+		state.overflowButton.setImageDrawable(
+			state.customOverflowIcon ?: OverflowDotsDrawable(
+				dockedTint(),
+				dpToPx(24)
+			)
+		)
+	}
+
+	private fun dockedTint(): Int =
+		dockedMenuTint ?: MaterialColors.getColor(
+			context,
+			MR.attr.colorOnSurfaceVariant,
+			Color.DKGRAY
+		)
+
+	/** Uses the item's icon when present; otherwise falls back to a text button with its title. */
+	private fun createDockedEntryView(item: MenuItem): View {
+		val tint = dockedTint()
+		return if (item.icon != null) {
+			AppCompatImageButton(context).apply {
+				val pad = dpToPx(12)
+				scaleType = ImageView.ScaleType.CENTER_INSIDE
+				background = createCompactRipple()
+				setPadding(pad, pad, pad, pad)
+				setImageDrawable(item.icon)
+				ImageViewCompat.setImageTintList(this, ColorStateList.valueOf(tint))
+				contentDescription = item.title
+				isEnabled = item.isEnabled
+				alpha = if (item.isEnabled) ENABLED_ALPHA else DISABLED_ALPHA
+				if (!item.title.isNullOrEmpty()) TooltipCompat.setTooltipText(this, item.title)
+				layoutParams = LinearLayout.LayoutParams(dpToPx(48), dpToPx(48))
+			}
+		} else {
+			AppCompatButton(context, null, android.R.attr.borderlessButtonStyle).apply {
+				text = item.title
+				isAllCaps = false
+				background = createCompactRipple()
+				setPadding(dpToPx(12), 0, dpToPx(12), 0)
+				minWidth = 0
+				minimumWidth = 0
+				isEnabled = item.isEnabled
+				alpha = if (item.isEnabled) ENABLED_ALPHA else DISABLED_ALPHA
+				setTextColor(tint)
+				layoutParams =
+					LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dpToPx(48))
+			}
+		}
+	}
+
+	private fun buildDockedEntries(state: DockedMenuState, menu: Menu): List<DockedEntry> {
+		val entries = mutableListOf<DockedEntry>()
+		for (index in 0 until menu.size()) {
+			val rawItem = menu.getItem(index)
+			if (!rawItem.isVisible) continue
+			val item = wrapDocked(state, rawItem)
+			val view = createDockedEntryView(item)
+			if (item.hasSubMenu()) {
+				view.setOnClickListener { showDockedSubMenu(state, view, item) }
+			} else {
+				view.setOnClickListener { handleDockedItemClicked(state, menu, item) }
+			}
+			view.setOnLongClickListener { handleDockedItemLongClicked(state, menu, item) }
+			entries.add(DockedEntry(item, view))
+		}
+		return entries
+	}
+
+	/** Checks whether [item] was inflated with `app:showAsAction="always"` (same rule and safety net as the bar). */
+	@SuppressLint("RestrictedApi")
+	private fun isShowAsActionAlways(item: MenuItem): Boolean {
+		val realItem = (item as? DockedReactiveItem)?.unwrap() ?: item
+		return try {
+			(realItem as? MenuItemImpl)?.requiresActionButton() == true
+		} catch (error: Throwable) {
+			false
+		}
+	}
+
+	/** Splits the entries between "shown directly" and "goes to the overflow", exactly like the bar does. */
+	private fun populateDockedSide(state: DockedMenuState, masterMenu: Menu?) {
+		state.container.removeAllViews()
+
+		if (state.entries.isEmpty()) {
+			state.overflowButton.visibility = GONE
+			updateDockedMenuVisibility()
+			return
+		}
+
+		val visibleEntries =
+			state.entries.filter { isShowAsActionAlways(it.item) && it.item.itemId !in state.forcedOverflowIds }
+		val overflowEntries =
+			state.entries.filterNot { entry -> visibleEntries.any { it.item.itemId == entry.item.itemId } }
+		val spacing = dpToPx(4)
+
+		visibleEntries.forEachIndexed { index, entry ->
+			(entry.view.layoutParams as LinearLayout.LayoutParams).marginStart =
+				if (index == 0) 0 else spacing
+			state.container.addView(entry.view)
+		}
+
+		if (overflowEntries.isNotEmpty()) {
+			(state.overflowButton.layoutParams as LinearLayout.LayoutParams).marginStart =
+				if (visibleEntries.isEmpty()) 0 else spacing
+			state.overflowButton.visibility = VISIBLE
+			state.container.addView(state.overflowButton)
+			buildDockedOverflowPopup(state, masterMenu, overflowEntries.map { it.item })
+		} else {
+			state.overflowButton.visibility = GONE
+		}
+		updateDockedMenuVisibility()
+		state.container.requestLayout()
+	}
+
+	private fun buildDockedOverflowPopup(
+		state: DockedMenuState,
+		masterMenu: Menu?,
+		overflowItems: List<MenuItem>
+	) {
+		if (masterMenu == null) return
+		val popup = PopupMenu(context, state.overflowButton)
+		overflowItems.forEachIndexed { order, item ->
+			popup.menu.add(Menu.NONE, item.itemId, order, item.title)
+				.setIcon(item.icon)
+				.setEnabled(item.isEnabled)
+		}
+		popup.setOnMenuItemClickListener { proxyItem ->
+			val realItem =
+				masterMenu.findItem(proxyItem.itemId) ?: return@setOnMenuItemClickListener false
+			handleDockedItemClicked(state, masterMenu, wrapDocked(state, realItem))
+			true
+		}
+		state.overflowButton.setOnClickListener { popup.show() }
+		state.overflowPopup = popup
+	}
+
+	/** Reveals a nested `<menu>` of [item] as a [PopupMenu] anchored to [anchor]. */
+	private fun showDockedSubMenu(state: DockedMenuState, anchor: View, item: MenuItem) {
+		val subMenu = item.subMenu ?: return
+		val popup = PopupMenu(context, anchor)
+		for (index in 0 until subMenu.size()) {
+			val subItem = subMenu.getItem(index)
+			popup.menu.add(Menu.NONE, subItem.itemId, index, subItem.title)
+				.setIcon(subItem.icon)
+				.setEnabled(subItem.isEnabled)
+		}
+		popup.setOnMenuItemClickListener { proxyItem ->
+			val realSubItem =
+				subMenu.findItem(proxyItem.itemId) ?: return@setOnMenuItemClickListener false
+			state.clickListener?.onMenuItemClicked(wrapDocked(state, realSubItem))
+			true
+		}
+		popup.show()
+	}
+
+	private fun handleDockedItemClicked(state: DockedMenuState, menu: Menu, item: MenuItem) {
+		if (!item.isEnabled) return
+
+		state.clickListener?.onMenuItemClicked(item)
+
+		if (item.itemId == state.selectedItemId) {
+			state.changedListener?.onMenuReselect(item)
+			return
+		}
+
+		val previousItem = menu.findItem(state.selectedItemId)
+		previousItem?.isChecked = false
+		item.isChecked = true
+		state.selectedItemId = item.itemId
+
+		if (previousItem != null) state.changedListener?.onMenuUnselect(
+			wrapDocked(
+				state,
+				previousItem
+			)
+		)
+		state.changedListener?.onMenuSelect(item)
+	}
+
+	private fun handleDockedItemLongClicked(
+		state: DockedMenuState,
+		menu: Menu,
+		item: MenuItem
+	): Boolean {
+		if (!item.isEnabled) return false
+
+		val consumed = state.longClickListener?.onMenuItemLongClicked(item) ?: false
+
+		if (item.itemId == state.longSelectedItemId) {
+			state.longChangedListener?.onMenuLongReselect(item)
+		} else {
+			val previousItem = menu.findItem(state.longSelectedItemId)
+			state.longSelectedItemId = item.itemId
+			if (previousItem != null) state.longChangedListener?.onMenuLongUnselect(
+				wrapDocked(
+					state,
+					previousItem
+				)
+			)
+			state.longChangedListener?.onMenuLongSelect(item)
+		}
+		return consumed
+	}
+
+	/** Puts LEFT as the pill's first child and RIGHT as its last one. */
+	private fun attachDockedMenus() {
+		val pill = findPill() ?: return
+		attachDockedContainer(pill, dockedLeftState.container, atStart = true)
+		attachDockedContainer(pill, dockedRightState.container, atStart = false)
+	}
+
+	private fun attachDockedContainer(pill: LinearLayout, view: View, atStart: Boolean) {
+		if (view.parent === pill) {
+			val wanted = if (atStart) 0 else pill.childCount - 1
+			if (pill.indexOfChild(view) == wanted) return
+			pill.removeView(view)
+		} else {
+			(view.parent as? ViewGroup)?.removeView(view)
+		}
+		pill.addView(
+			view,
+			if (atStart) 0 else -1,
+			LinearLayout.LayoutParams(
+				ViewGroup.LayoutParams.WRAP_CONTENT,
+				ViewGroup.LayoutParams.WRAP_CONTENT
+			)
+		)
+	}
+
+	/** The dock's menus show ONLY while the dock is open (search active). */
+	private fun updateDockedMenuVisibility() {
+		val active = searchBar.isSearchActive()
+		for (state in arrayOf(dockedLeftState, dockedRightState)) {
+			state.container.visibility =
+				if (active && state.container.childCount > 0) VISIBLE else GONE
+		}
+	}
+
+	/** Same bounded ripple the bar uses for its own menu buttons (smaller than the 48dp touch target). */
+	private fun createCompactRipple(): Drawable {
+		val typedValue = TypedValue()
+		val resolved =
+			context.theme.resolveAttribute(android.R.attr.colorControlHighlight, typedValue, true)
+		val rippleColor = if (resolved) {
+			if (typedValue.resourceId != 0) ContextCompat.getColor(
+				context,
+				typedValue.resourceId
+			) else typedValue.data
+		} else Color.LTGRAY
+		val ripple =
+			RippleDrawable(ColorStateList.valueOf(rippleColor), null, ShapeDrawable(OvalShape()))
+		return InsetDrawable(ripple, dpToPx(6))
+	}
+
+	/** Three vertical dots, drawn instead of a resource so this file stays self-contained. */
+	private class OverflowDotsDrawable(@ColorInt color: Int, private val sizePx: Int) : Drawable() {
+		private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
+
+		override fun draw(canvas: Canvas) {
+			val b = bounds
+			val cx = b.exactCenterX()
+			val cy = b.exactCenterY()
+			val radius = b.width() / 12f
+			val gap = b.width() / 4f
+			canvas.drawCircle(cx, cy - gap, radius, paint)
+			canvas.drawCircle(cx, cy, radius, paint)
+			canvas.drawCircle(cx, cy + gap, radius, paint)
+		}
+
+		override fun getIntrinsicWidth(): Int = sizePx
+		override fun getIntrinsicHeight(): Int = sizePx
+		override fun setAlpha(alpha: Int) {
+			paint.alpha = alpha; invalidateSelf()
+		}
+
+		override fun setColorFilter(colorFilter: ColorFilter?) {
+			paint.colorFilter = colorFilter; invalidateSelf()
+		}
+
+		@Deprecated("Deprecated in Java")
+		override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+	}
+
+	// endregion
+
+
 	// region State saving ------------------------------------------------------------------------
 	// The inner bar has no id, so this view saves what matters itself (query + active state).
 
@@ -1229,3 +1868,5 @@ class ComponentDockedSearchBar @JvmOverloads constructor(
 
 	// endregion
 }
+
+private const val NO_ITEM_ID = -1

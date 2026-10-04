@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import com.deavidig.mod.deanielig.appcompat.app.ComponentPermissionAppCompatActivity
 import com.deavidig.skecth.project.creator.activities.ProjectCreatorActivity
+import com.deavidig.skecth.project.main.adapter.`MainActivity-DockedProjectAdapter`
 import com.deavidig.skecth.project.main.adapter.`MainActivity-ProjectAdapter`
 import com.deavidig.skecth.project.utils.FileUtil
 import com.deavidig.skecth.project.utils.Gradle
@@ -138,6 +139,9 @@ class MainActivity : ComponentPermissionAppCompatActivity() {
 
 		layout_binding.projectList.adapter =
 			`MainActivity-ProjectAdapter`(projectList = projectList)
+
+		layout_binding.barSearchProjects.adapter =
+			`MainActivity-DockedProjectAdapter`(projectList = projectList)
 
 		setupListeners()
 	}

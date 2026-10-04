@@ -378,6 +378,14 @@
 		<attr name="dockedDividerColor" format="color" />
 		<attr name="dockedDividerHeight" format="dimension" />
 
+		<!-- Menús propios del Docked, SOLO dentro de la píldora (afuera todavía no) y SOLO visibles con el dock activo.
+             Mismas reglas que los menús del SearchBar: showAsAction="always" = botón, el resto va al overflow. -->
+		<attr name="dockedMenuLeft" format="reference" />
+		<attr name="dockedMenuRight" format="reference" />
+		<attr name="dockedMenuLeftOverflowIcon" format="reference" />
+		<attr name="dockedMenuRightOverflowIcon" format="reference" />
+		<attr name="dockedMenuIconTint" format="color" />
+
 		<!-- true: el panel ocupa espacio y empuja a los demás. false (por defecto): bar + panel en un Dialog con Scrim. -->
 		<attr name="forceSpaceDocked" format="boolean" />
 
