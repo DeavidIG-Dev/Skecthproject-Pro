@@ -16,12 +16,18 @@
 		<item name="dockedJoined">false</item>
 	</style>
 
+	<style name="Widget.Material.FloatingActionButton.Pill" parent="">
+		<item name="cornerFamily">rounded</item>
+		<item name="cornerSize">50%</item>
+	</style>
+
 	<style name="Widget.ComponentMaterial.ComponentDockedSearchBar.Joined" parent="">
 		<item name="dockedJoined">true</item>
 	</style>
 
 	<style name="Widget.ComponentMaterial.ComponentFloatingBar" parent="">
-		<item name="android:paddingVertical">8dp</item>
+		<item name="android:paddingEnd">8dp</item>
+		<item name="android:paddingStart">8dp</item>
 		<item name="android:elevation">0dp</item>
 		<item name="floatingBarFabWidthRatio">1.5</item>
 	</style>

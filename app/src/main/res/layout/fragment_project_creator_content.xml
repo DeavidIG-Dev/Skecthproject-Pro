@@ -168,33 +168,74 @@
 
 	</com.google.android.material.button.MaterialButtonToggleGroup>
 
-	<com.google.android.material.bottomnavigation.BottomNavigationView
-		android:layout_width="250dp"
-		android:layout_height="75dp"
-		android:layout_margin="16dp"
-		android:background="@drawable/tab_background"
-		android:elevation="16dp"
-		app:activeIndicatorLabelPadding="0dp"
-		app:elevation="16dp"
-		app:itemGravity="center"
-		app:itemHorizontalTranslationEnabled="true"
-		app:itemPaddingBottom="0dp"
-		app:itemPaddingTop="0dp"
-		app:labelVisibilityMode="unlabeled"
-		app:layout_constraintBottom_toBottomOf="parent"
-		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintStart_toStartOf="parent"
-		app:menu="@menu/activity_project_creator_content_floatingbar_left_menu" />
-
-	<!-- <com.deavidig.mod.deanielig.floatingbar.widget.ComponentFloatingBar
+	<com.google.android.material.floatingtoolbar.FloatingToolbarLayout
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_margin="16dp"
-		android:elevation="8dp"
-		android:paddingHorizontal="8dp"
+		android:padding="0dp"
+		android:background="@drawable/tab_background"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintEnd_toEndOf="parent"
-		app:layout_constraintStart_toStartOf="parent"
-		app:leftMenu="@menu/activity_project_creator_content_floatingbar_left_menu" /> -->
+		app:layout_constraintStart_toStartOf="parent">
+
+		<androidx.constraintlayout.widget.ConstraintLayout
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:layout_gravity="center_vertical"
+			android:padding="0dp">
+
+			<com.google.android.material.tabs.TabLayout
+				android:id="@+id/tabLayout"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:background="@android:color/transparent"
+				android:padding="0dp"
+				android:layout_marginStart="8dp"
+				android:layout_marginEnd="8dp"
+				app:layout_constraintBottom_toBottomOf="parent"
+				app:layout_constraintEnd_toStartOf="@+id/group"
+				app:layout_constraintStart_toStartOf="parent"
+				app:layout_constraintTop_toTopOf="parent"
+				app:tabIconTint="@color/tab_icon_m3_selector"
+				app:tabIndicator="@drawable/tab_indicator_background"
+				app:tabIndicatorAnimationDuration="750"
+				app:tabIndicatorAnimationMode="elastic"
+				app:tabIndicatorColor="?attr/colorSurfaceContainerHighest"
+				app:tabIndicatorFullWidth="false"
+				app:tabIndicatorGravity="stretch"
+				app:tabInlineLabel="true"
+				app:tabRippleColor="@null"
+				app:tabTextColor="@color/tab_icon_m3_selector"
+				app:tabGravity="center">
+
+				<com.google.android.material.tabs.TabItem
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:text="Home"
+					android:icon="@drawable/ic_home_24" />
+
+				<com.google.android.material.tabs.TabItem
+					android:layout_width="match_parent"
+					android:layout_height="match_parent"
+					android:text="Gradle"
+					android:icon="@drawable/ic_gradle_32" />
+
+			</com.google.android.material.tabs.TabLayout>
+
+			<androidx.appcompat.widget.AppCompatImageButton
+				android:id="@+id/group"
+				android:layout_width="60dp"
+				android:layout_height="0dp"
+				android:layout_marginEnd="8dp"
+				android:layout_marginVertical="8dp"
+				android:background="@drawable/bg_efab"
+				android:src="@drawable/ic_more_hori_24"
+				app:layout_constraintBottom_toBottomOf="parent"
+				app:layout_constraintEnd_toEndOf="parent"
+				app:layout_constraintTop_toTopOf="@+id/tabLayout" />
+
+		</androidx.constraintlayout.widget.ConstraintLayout>
+
+	</com.google.android.material.floatingtoolbar.FloatingToolbarLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
