@@ -39,7 +39,7 @@
 		android:text="Options"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintEnd_toEndOf="parent"
-		app:menu="@menu/activity_main_floatingactionbuttonmenu_menu"
+		app:menu="@menu/fragment_project_creator_modules_floatingactionbuttonmenu_menu"
 		app:menuIcon="more_vert"
 		app:scrimEnabled="false" />
 
